@@ -271,9 +271,8 @@ def main(args):
     percentiles = None
     if args.rescale_intensity:
         _logger.info("Calculate percentiles")
-        percentiles = ((0.0, 0.17889499664306618), (0.0, 0.1965800046920776), (0.0, 0.25697999894618984), (0.0, 0.29840499460697156))
-        #percentiles = calculate_percentiles(args.raster,
-                #lower_cut=args.lower_cut, upper_cut=args.upper_cut)
+        percentiles = calculate_percentiles(args.raster,
+                lower_cut=args.lower_cut, upper_cut=args.upper_cut)
 
     _logger.info("Extract chips")
     extract_chips(args.raster,
