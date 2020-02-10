@@ -19,16 +19,22 @@ import argparse
 import sys
 import logging
 
-import rasterio
-import fiona
-import logging
 import os
 import math
+import rasterio
 import numpy as np
+import pyproj
+import json
 from tqdm import tqdm
-from rasterio.windows import Window
+from rasterio.windows import Window, bounds
 from skimage.io import imsave
 from skimage import exposure
+from shapely.geometry import box, mapping
+from shapely.ops import transform
+from functools import partial
+
+# Workaround: Load fiona at the end to avoid segfault on box (???)
+import fiona
 
 from satproc import __version__
 
@@ -111,13 +117,13 @@ def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2,
                 img = np.array([img[b-1, :, :] for b in bands])
 
             img_path = os.path.join(output_dir, '{i}_{j}.jpg'.format(i=i, j=j))
-            image_was_saved = write_image(img, img_path, percentiles=percentiles)
+            image_was_saved = write_image(img, img_path)
             if image_was_saved:
-                chip_shape = box(*window.bounds)
+                chip_shape = box(*bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
-        write_chips_geojson(chips, crs=ds.crs, output_dir=output_dir)
+        write_chips_geojson(chips, crs=str(ds.crs), output_dir=output_dir)
 
 
 def write_image(img, path, percentiles=None):
@@ -125,7 +131,8 @@ def write_image(img, path, percentiles=None):
     if exposure.is_low_contrast(rgb):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    imsave(path, rgb)
+    if not os.path.exists(path):
+        imsave(path, rgb)
     return True
 
 
@@ -143,10 +150,13 @@ def write_chips_geojson(chip_pairs, *, crs, output_dir):
               'features': [] }
         for i, (chip, (fi, xi, yi)) in enumerate(chip_pairs):
             # Shapes will be stored in EPSG:4326 projection
-            project = partial(pyproj.transform,
-                    pyproj.Proj(init=crs),
-                    pyproj.Proj(init='epsg:4326'))
-            chip_wgs = transform(project, chip)
+            if crs != 'EPSG:4326':
+                project = partial(pyproj.transform,
+                        pyproj.Proj(crs),
+                        pyproj.Proj('EPSG:4326'))
+                chip_wgs = transform(project, chip)
+            else:
+                chip_wgs = chip
             filename = '{x}_{y}.jpg'.format(x=xi, y=yi)
             feature = { 'type': 'Feature',
                         'geometry': mapping(chip_wgs),
@@ -261,9 +271,9 @@ def main(args):
     percentiles = None
     if args.rescale_intensity:
         _logger.info("Calculate percentiles")
-        percentiles = calculate_percentiles(args.raster,
-                lower_cut=args.lower_cut, upper_cut=args.upper_cut)
-        _logger.info("Percentiles are: %s", percentiles)
+        percentiles = ((0.0, 0.17889499664306618), (0.0, 0.1965800046920776), (0.0, 0.25697999894618984), (0.0, 0.29840499460697156))
+        #percentiles = calculate_percentiles(args.raster,
+                #lower_cut=args.lower_cut, upper_cut=args.upper_cut)
 
     _logger.info("Extract chips")
     extract_chips(args.raster,
