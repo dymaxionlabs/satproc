@@ -89,6 +89,9 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
 
 def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2, 3], *, size,
         step_size, output_dir):
+
+    basename, _ = os.splitext(os.path.basename(raster))
+
     with rasterio.open(raster) as ds:
         _logger.info('Raster size: %s', (ds.width, ds.height))
 
@@ -116,14 +119,15 @@ def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2,
             else:
                 img = np.array([img[b-1, :, :] for b in bands])
 
-            img_path = os.path.join(output_dir, '{i}_{j}.jpg'.format(i=i, j=j))
+            img_path = os.path.join(output_dir, '{basename}_{x}_{y}.jpg'.format(basename=basename, x=i, y=j))
             image_was_saved = write_image(img, img_path)
             if image_was_saved:
                 chip_shape = box(*bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
-        write_chips_geojson(chips, crs=str(ds.crs), output_dir=output_dir)
+        geojson_path = oos.path.join(output_dir, '{}.geojson'.format(basename))
+        write_chips_geojson(geojson_path, chips, crs=str(ds.crs), basename=basename)
 
 
 def write_image(img, path, percentiles=None):
@@ -136,13 +140,12 @@ def write_image(img, path, percentiles=None):
     return True
 
 
-def write_chips_geojson(chip_pairs, *, crs, output_dir):
+def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
     if not chip_pairs:
         _logger.warn("No chips to save")
         return
 
     _logger.info("Write chips geojson")
-    output_path = os.path.join(output_dir, 'chips.geojson')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     with open(output_path, 'w') as f:
@@ -157,7 +160,7 @@ def write_chips_geojson(chip_pairs, *, crs, output_dir):
                 chip_wgs = transform(project, chip)
             else:
                 chip_wgs = chip
-            filename = '{x}_{y}.jpg'.format(x=xi, y=yi)
+            filename = '{basename}_{x}_{y}.jpg'.format(basename=basename, x=xi, y=yi)
             feature = { 'type': 'Feature',
                         'geometry': mapping(chip_wgs),
                         'properties': { 'id': i, 'x': xi, 'y': yi, 'filename': filename } }
