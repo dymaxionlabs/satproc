@@ -59,6 +59,7 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
         totals_per_bands = [[] for _ in range(ds.count)]
         for window, _ in tqdm(windows):
             img = ds.read(window=window)
+            img = np.nan_to_num(img)
             window_sample = []
             for i in range(img.shape[0]):
                 values = img[i].flatten()
@@ -80,7 +81,7 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
         return res
 
 
-def extract_chips(raster, contour_shapefile=None, percentiles=None, *, size,
+def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2, 3], *, size,
         step_size, output_dir):
     with rasterio.open(raster) as ds:
         _logger.info('Raster size: %s', (ds.width, ds.height))
@@ -88,19 +89,15 @@ def extract_chips(raster, contour_shapefile=None, percentiles=None, *, size,
         if ds.count < 3:
             raise RuntimeError("Raster must have 3 bands corresponding to RGB channels")
 
-        if ds.count > 3:
-            _logger.warn("WARNING: Raster has {} bands. " \
-                  "Going to assume first 3 bands are RGB...".format(ds.count))
-
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(sliding_windows(win_size, win_step_size, ds.width, ds.height))
-        saved_windows = []
+        chips = []
 
-        for window, (i, j) in tqdm(windows):
+        for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
             _logger.debug("%s %s", window, (i, j))
             img = ds.read(window=window)
-            img = img[:3, :, :]
+            img = np.nan_to_num(img)
 
             if percentiles:
                 new_img = []
@@ -110,17 +107,21 @@ def extract_chips(raster, contour_shapefile=None, percentiles=None, *, size,
                             in_range=perc, out_range=(0, 255)).astype(np.uint8)
                     new_img.append(band)
                 img = np.array(new_img)
+            else:
+                img = np.array([img[b-1, :, :] for b in bands])
 
-            img_path = os.path.join(output_dir, 'jpg', '{i}_{j}.jpg'.format(i=i, j=j))
+            img_path = os.path.join(output_dir, '{i}_{j}.jpg'.format(i=i, j=j))
             image_was_saved = write_image(img, img_path, percentiles=percentiles)
             if image_was_saved:
-                saved_windows.append(window)
+                chip_shape = box(*window.bounds)
+                chip = (chip_shape, (c, i, j))
+                chips.append(chip)
 
-        write_chips_geojson(saved_windows, crs=ds.crs, output_dir=output_dir)
+        write_chips_geojson(chips, crs=ds.crs, output_dir=output_dir)
 
 
 def write_image(img, path, percentiles=None):
-    rgb = np.dstack(img[:3, :, :])
+    rgb = np.dstack(img[:3, :, :]).astype(np.uint8)
     if exposure.is_low_contrast(rgb):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -128,9 +129,30 @@ def write_image(img, path, percentiles=None):
     return True
 
 
-def write_chips_geojson(windows, *, crs, output_dir):
+def write_chips_geojson(chip_pairs, *, crs, output_dir):
+    if not chip_pairs:
+        _logger.warn("No chips to save")
+        return
+
     _logger.info("Write chips geojson")
-    pass
+    output_path = os.path.join(output_dir, 'chips.geojson')
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, 'w') as f:
+        d = { 'type': 'FeatureCollection',
+              'features': [] }
+        for i, (chip, (fi, xi, yi)) in enumerate(chip_pairs):
+            # Shapes will be stored in EPSG:4326 projection
+            project = partial(pyproj.transform,
+                    pyproj.Proj(init=crs),
+                    pyproj.Proj(init='epsg:4326'))
+            chip_wgs = transform(project, chip)
+            filename = '{x}_{y}.jpg'.format(x=xi, y=yi)
+            feature = { 'type': 'Feature',
+                        'geometry': mapping(chip_wgs),
+                        'properties': { 'id': i, 'x': xi, 'y': yi, 'filename': filename } }
+            d['features'].append(feature)
+        f.write(json.dumps(d))
 
 
 def parse_args(args):
@@ -188,6 +210,12 @@ def parse_args(args):
         default=98,
         help=
         "upper cut of percentiles for cumulative count in intensity rescaling")
+    parser.add_argument(
+        '-b',
+        '--bands',
+        nargs='+',
+        type=int,
+        help="RGB band indexes")
 
     parser.add_argument(
         "--version",
@@ -230,11 +258,12 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    _logger.info("Calculate percentiles")
     percentiles = None
     if args.rescale_intensity:
+        _logger.info("Calculate percentiles")
         percentiles = calculate_percentiles(args.raster,
                 lower_cut=args.lower_cut, upper_cut=args.upper_cut)
+        _logger.info("Percentiles are: %s", percentiles)
 
     _logger.info("Extract chips")
     extract_chips(args.raster,
@@ -242,6 +271,7 @@ def main(args):
             step_size=args.step_size,
             contour_shapefile=args.contour_shapefile,
             percentiles=percentiles,
+            bands=args.bands,
             output_dir=args.output_dir)
 
     _logger.info("Script ends here")
