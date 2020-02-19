@@ -38,47 +38,73 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    parser = argparse.ArgumentParser(description="Extract chips from a raster file")
+    parser = argparse.ArgumentParser(
+        description="Extract chips from a raster file")
 
     parser.add_argument("raster", help="input raster file")
-    parser.add_argument(
-        "--size", type=int, default=256, help="size of image tiles, in pixels"
-    )
-    parser.add_argument(
-        "--step-size", type=int, default=128, help="step size (i.e. stride), in pixels"
-    )
+    parser.add_argument("--size",
+                        type=int,
+                        default=256,
+                        help="size of image tiles, in pixels")
+    parser.add_argument("--step-size",
+                        type=int,
+                        default=128,
+                        help="step size (i.e. stride), in pixels")
     parser.add_argument("--contour-shapefile", help="contour shapefile")
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
+
     parser.add_argument(
-        "--rescale-intensity",
-        dest="rescale_intensity",
+        "--rescale",
+        dest="rescale",
         default=True,
         action="store_true",
-        help="rescale intensity",
+        help="rescale intensity using percentiles (lower/upper cuts)",
     )
     parser.add_argument(
-        "--no-rescale-intensity",
-        dest="rescale_intensity",
+        "--no-rescale",
+        dest="rescale",
         action="store_false",
         help="do not rescale intensity",
     )
+
+    parser.add_argument("--rescale-mode",
+                        default="percentiles",
+                        choices=["percentiles", "values"],
+                        help="choose mode of intensity rescaling")
+
     parser.add_argument(
         "--lower-cut",
-        type=int,
+        type=float,
         default=2,
-        help="lower cut of percentiles for cumulative count in intensity rescaling",
+        help=
+        "(for 'percentiles' mode) lower cut of percentiles for cumulative count in intensity rescaling",
     )
     parser.add_argument(
         "--upper-cut",
-        type=int,
+        type=float,
         default=98,
-        help="upper cut of percentiles for cumulative count in intensity rescaling",
+        help=
+        "(for 'percentiles' mode) upper cut of percentiles for cumulative count in intensity rescaling",
     )
-    parser.add_argument("-b", "--bands", nargs="+", type=int, help="RGB band indexes")
 
     parser.add_argument(
-        "--version", action="version", version="satproc {ver}".format(ver=__version__)
-    )
+        '--min',
+        type=float,
+        help="(for 'values' mode) minimum value in intensity rescaling")
+    parser.add_argument(
+        '--max',
+        type=float,
+        help="(for 'values' mode) maximum value in intensity rescaling")
+
+    parser.add_argument("-b",
+                        "--bands",
+                        nargs="+",
+                        type=int,
+                        help="RGB band indexes")
+
+    parser.add_argument("--version",
+                        action="version",
+                        version="satproc {ver}".format(ver=__version__))
     parser.add_argument(
         "-v",
         "--verbose",
@@ -105,9 +131,10 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(
-        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    logging.basicConfig(level=loglevel,
+                        stream=sys.stdout,
+                        format=logformat,
+                        datefmt="%Y-%m-%d %H:%M:%S")
 
 
 def main(args):
@@ -120,7 +147,17 @@ def main(args):
     setup_logging(args.loglevel)
 
     bands = [1, 2, 3] if not args.bands else args.bands
-    rescale_range = (args.lower_cut, args.upper_cut) if args.rescale_intensity else None
+
+    rescale_mode = args.rescale_mode if args.rescale else None
+    if rescale_mode == 'percentiles':
+        rescale_range = (args.lower_cut, args.upper_cut)
+        _logger.info("Rescale intensity with percentiles %s", rescale_range)
+    elif rescale_mode == 'values':
+        rescale_range = (args.min, args.max)
+        _logger.info("Rescale intensity with values %s", rescale_range)
+    else:
+        rescale_range = None
+        _logger.info("No rescale intensity")
 
     _logger.info("Extract chips")
     extract_chips(
@@ -128,6 +165,7 @@ def main(args):
         size=args.size,
         step_size=args.step_size,
         contour_shapefile=args.contour_shapefile,
+        rescale_mode=rescale_mode,
         rescale_range=rescale_range,
         bands=bands,
         output_dir=args.output_dir,

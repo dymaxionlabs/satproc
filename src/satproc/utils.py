@@ -28,28 +28,22 @@ def sliding_windows(size, step_size, width, height):
             yield Window(j, i, w, h), (pos_i, pos_j)
 
 
-def rescale_intensity(image, lower_cut, upper_cut, all_bands=True):
+def rescale_intensity(image, rescale_mode, rescale_range):
     """Calculate percentiles from a range cut and rescale intensity of image"""
-    if all_bands:
-        # Rescale all bands with a unique percentile
-        percentiles = tuple(np.percentile(image, (lower_cut, upper_cut)))
-        return exposure.rescale_intensity(image,
-                                          in_range=percentiles,
-                                          out_range=(0, 255)).astype(np.uint8)
-    else:
-        # Rescale each band separately
-        ndims = image.shape[2]
-        percentiles = [
-            tuple(np.percentile(image[:, :, b], (lower_cut, upper_cut)))
-            for b in range(ndims)
-        ]
-        rescaled_bands = [
-            exposure.rescale_intensity(image[:, :, b],
-                                       in_range=percentiles[b],
-                                       out_range=(0, 255)).astype(np.uint8)
-            for b in range(ndims)
-        ]
-        return np.dstack(rescaled_bands)
+
+    if rescale_mode == 'percentiles':
+        in_range = tuple(np.percentile(image, rescale_range))
+    elif rescale_mode == 'values':
+        min_value, max_value = rescale_range
+        if not min_value:
+            min_value = np.min(image)
+        if not max_value:
+            max_value = np.max(image)
+        in_range = (min_value, max_value)
+
+    return exposure.rescale_intensity(image,
+                                      in_range=in_range,
+                                      out_range=(0, 255)).astype(np.uint8)
 
 
 def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):

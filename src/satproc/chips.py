@@ -25,6 +25,7 @@ _logger = logging.getLogger(__name__)
 
 def extract_chips(raster,
                   contour_shapefile=None,
+                  rescale_mode=None,
                   rescale_range=None,
                   bands=[1, 2, 3],
                   *,
@@ -53,9 +54,8 @@ def extract_chips(raster,
             img = np.nan_to_num(img)
             img = np.array([img[b - 1, :, :] for b in bands])
 
-            if rescale_range:
-                lower_cut, upper_cut = rescale_range
-                img = rescale_intensity(img, lower_cut, upper_cut)
+            if rescale_mode:
+                img = rescale_intensity(img, rescale_mode, rescale_range)
 
             img_path = os.path.join(
                 output_dir, "{basename}_{x}_{y}.jpg".format(basename=basename,
