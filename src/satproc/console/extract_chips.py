@@ -16,172 +16,18 @@ Note: This skeleton file can be safely removed if not needed!
 """
 
 import argparse
-import sys
 import logging
-
-import os
-import math
-import rasterio
-import numpy as np
-import pyproj
-import json
-from tqdm import tqdm
-from rasterio.windows import Window, bounds
-from skimage.io import imsave
-from skimage import exposure
-from shapely.geometry import box, mapping
-from shapely.ops import transform
-from functools import partial
-
-# Workaround: Load fiona at the end to avoid segfault on box (???)
-import fiona
+import sys
 
 from satproc import __version__
+from satproc.chips import extract_chips
+from satproc.utils import calculate_percentiles
 
 __author__ = "Damián Silvani"
 __copyright__ = "Damián Silvani"
 __license__ = "mit"
 
 _logger = logging.getLogger(__name__)
-
-
-def sliding_windows(size, step_size, width, height):
-    """Slide a window of +size+ by moving it +step_size+ pixels"""
-    w, h = size
-    sw, sh = step_size
-    for pos_i, i in enumerate(range(0, height - h + 1, sh)):
-        for pos_j, j in enumerate(range(0, width - w + 1, sw)):
-            yield Window(j, i, w, h), (pos_i, pos_j)
-
-
-def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
-    sample_size = 5000
-    size = (2048, 2048)
-
-    with rasterio.open(raster) as ds:
-        windows = list(sliding_windows(size, size, ds.width, ds.height))
-        window_sample_size = math.ceil(sample_size / len(windows))
-        _logger.info(
-            "Windows: %d, windows sample size: %d", len(windows), window_sample_size
-        )
-        totals_per_bands = [[] for _ in range(ds.count)]
-        for window, _ in tqdm(windows):
-            img = ds.read(window=window)
-            img = np.nan_to_num(img)
-            window_sample = []
-            for i in range(img.shape[0]):
-                values = img[i].flatten()
-                window_sample.append(
-                    np.random.choice(values, size=window_sample_size, replace=False)
-                )
-            for i, win in enumerate(window_sample):
-                totals_per_bands[i].append(win)
-
-        for i, totals in enumerate(totals_per_bands):
-            totals_per_bands[i] = np.array(totals).flatten()
-
-        totals = np.array(totals_per_bands)
-        _logger.info("Total shape: %s", totals.shape)
-
-        res = tuple(
-            tuple(p) for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T
-        )
-        _logger.info("Percentiles: %s", res)
-
-        return res
-
-
-def extract_chips(
-    raster,
-    contour_shapefile=None,
-    percentiles=None,
-    bands=[1, 2, 3],
-    *,
-    size,
-    step_size,
-    output_dir
-):
-
-    basename, _ = os.splitext(os.path.basename(raster))
-
-    with rasterio.open(raster) as ds:
-        _logger.info("Raster size: %s", (ds.width, ds.height))
-
-        if ds.count < 3:
-            raise RuntimeError("Raster must have 3 bands corresponding to RGB channels")
-
-        win_size = (size, size)
-        win_step_size = (step_size, step_size)
-        windows = list(sliding_windows(win_size, win_step_size, ds.width, ds.height))
-        chips = []
-
-        for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
-            _logger.debug("%s %s", window, (i, j))
-            img = ds.read(window=window)
-            img = np.nan_to_num(img)
-
-            if percentiles:
-                new_img = []
-                for k, perc in enumerate(percentiles):
-                    band = img[k, :, :]
-                    band = exposure.rescale_intensity(
-                        band, in_range=perc, out_range=(0, 255)
-                    ).astype(np.uint8)
-                    new_img.append(band)
-                img = np.array(new_img)
-            else:
-                img = np.array([img[b - 1, :, :] for b in bands])
-
-            img_path = os.path.join(
-                output_dir, "{basename}_{x}_{y}.jpg".format(basename=basename, x=i, y=j)
-            )
-            image_was_saved = write_image(img, img_path)
-            if image_was_saved:
-                chip_shape = box(*bounds(window, ds.transform))
-                chip = (chip_shape, (c, i, j))
-                chips.append(chip)
-
-        geojson_path = oos.path.join(output_dir, "{}.geojson".format(basename))
-        write_chips_geojson(geojson_path, chips, crs=str(ds.crs), basename=basename)
-
-
-def write_image(img, path, percentiles=None):
-    rgb = np.dstack(img[:3, :, :]).astype(np.uint8)
-    if exposure.is_low_contrast(rgb):
-        return False
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if not os.path.exists(path):
-        imsave(path, rgb)
-    return True
-
-
-def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
-    if not chip_pairs:
-        _logger.warn("No chips to save")
-        return
-
-    _logger.info("Write chips geojson")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    with open(output_path, "w") as f:
-        d = {"type": "FeatureCollection", "features": []}
-        for i, (chip, (fi, xi, yi)) in enumerate(chip_pairs):
-            # Shapes will be stored in EPSG:4326 projection
-            if crs != "EPSG:4326":
-                project = partial(
-                    pyproj.transform, pyproj.Proj(crs), pyproj.Proj("EPSG:4326")
-                )
-                chip_wgs = transform(project, chip)
-            else:
-                chip_wgs = chip
-            filename = "{basename}_{x}_{y}.jpg".format(basename=basename, x=xi, y=yi)
-            feature = {
-                "type": "Feature",
-                "geometry": mapping(chip_wgs),
-                "properties": {"id": i, "x": xi, "y": yi, "filename": filename},
-            }
-            d["features"].append(feature)
-        f.write(json.dumps(d))
 
 
 def parse_args(args):
