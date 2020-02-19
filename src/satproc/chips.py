@@ -33,7 +33,7 @@ def extract_chips(
     output_dir
 ):
 
-    basename, _ = os.splitext(os.path.basename(raster))
+    basename, _ = os.path.splitext(os.path.basename(raster))
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -72,7 +72,7 @@ def extract_chips(
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
-        geojson_path = oos.path.join(output_dir, "{}.geojson".format(basename))
+        geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
         write_chips_geojson(geojson_path, chips, crs=str(ds.crs), basename=basename)
 
 
