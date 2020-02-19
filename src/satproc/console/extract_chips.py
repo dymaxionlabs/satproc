@@ -21,7 +21,6 @@ import sys
 
 from satproc import __version__
 from satproc.chips import extract_chips
-from satproc.utils import calculate_percentiles
 
 __author__ = "Damián Silvani"
 __copyright__ = "Damián Silvani"
@@ -121,13 +120,7 @@ def main(args):
     setup_logging(args.loglevel)
 
     bands = [1, 2, 3] if not args.bands else args.bands
-
-    percentiles = None
-    if args.rescale_intensity:
-        _logger.info("Calculate percentiles")
-        percentiles = calculate_percentiles(
-            args.raster, lower_cut=args.lower_cut, upper_cut=args.upper_cut
-        )
+    rescale_range = (args.lower_cut, args.upper_cut) if args.rescale_intensity else None
 
     _logger.info("Extract chips")
     extract_chips(
@@ -135,12 +128,10 @@ def main(args):
         size=args.size,
         step_size=args.step_size,
         contour_shapefile=args.contour_shapefile,
-        percentiles=percentiles,
+        rescale_range=rescale_range,
         bands=bands,
         output_dir=args.output_dir,
     )
-
-    _logger.info("Script ends here")
 
 
 def run():
