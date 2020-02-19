@@ -120,6 +120,8 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
+    bands = [1, 2, 3] if not args.bands else args.bands
+
     percentiles = None
     if args.rescale_intensity:
         _logger.info("Calculate percentiles")
@@ -134,7 +136,7 @@ def main(args):
         step_size=args.step_size,
         contour_shapefile=args.contour_shapefile,
         percentiles=percentiles,
-        bands=args.bands,
+        bands=bands,
         output_dir=args.output_dir,
     )
 
