@@ -61,7 +61,9 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
     with rasterio.open(raster) as ds:
         windows = list(sliding_windows(size, size, ds.width, ds.height))
         window_sample_size = math.ceil(sample_size / len(windows))
-        _logger.info("Windows: %d, windows sample size: %d", len(windows), window_sample_size)
+        _logger.info(
+            "Windows: %d, windows sample size: %d", len(windows), window_sample_size
+        )
         totals_per_bands = [[] for _ in range(ds.count)]
         for window, _ in tqdm(windows):
             img = ds.read(window=window)
@@ -69,9 +71,9 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
             window_sample = []
             for i in range(img.shape[0]):
                 values = img[i].flatten()
-                window_sample.append(np.random.choice(values,
-                        size=window_sample_size,
-                        replace=False))
+                window_sample.append(
+                    np.random.choice(values, size=window_sample_size, replace=False)
+                )
             for i, win in enumerate(window_sample):
                 totals_per_bands[i].append(win)
 
@@ -81,19 +83,29 @@ def calculate_percentiles(raster, lower_cut=2, upper_cut=98):
         totals = np.array(totals_per_bands)
         _logger.info("Total shape: %s", totals.shape)
 
-        res = tuple(tuple(p) for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T)
+        res = tuple(
+            tuple(p) for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T
+        )
         _logger.info("Percentiles: %s", res)
 
         return res
 
 
-def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2, 3], *, size,
-        step_size, output_dir):
+def extract_chips(
+    raster,
+    contour_shapefile=None,
+    percentiles=None,
+    bands=[1, 2, 3],
+    *,
+    size,
+    step_size,
+    output_dir
+):
 
     basename, _ = os.splitext(os.path.basename(raster))
 
     with rasterio.open(raster) as ds:
-        _logger.info('Raster size: %s', (ds.width, ds.height))
+        _logger.info("Raster size: %s", (ds.width, ds.height))
 
         if ds.count < 3:
             raise RuntimeError("Raster must have 3 bands corresponding to RGB channels")
@@ -112,21 +124,24 @@ def extract_chips(raster, contour_shapefile=None, percentiles=None, bands=[1, 2,
                 new_img = []
                 for k, perc in enumerate(percentiles):
                     band = img[k, :, :]
-                    band = exposure.rescale_intensity(band,
-                            in_range=perc, out_range=(0, 255)).astype(np.uint8)
+                    band = exposure.rescale_intensity(
+                        band, in_range=perc, out_range=(0, 255)
+                    ).astype(np.uint8)
                     new_img.append(band)
                 img = np.array(new_img)
             else:
-                img = np.array([img[b-1, :, :] for b in bands])
+                img = np.array([img[b - 1, :, :] for b in bands])
 
-            img_path = os.path.join(output_dir, '{basename}_{x}_{y}.jpg'.format(basename=basename, x=i, y=j))
+            img_path = os.path.join(
+                output_dir, "{basename}_{x}_{y}.jpg".format(basename=basename, x=i, y=j)
+            )
             image_was_saved = write_image(img, img_path)
             if image_was_saved:
                 chip_shape = box(*bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
-        geojson_path = oos.path.join(output_dir, '{}.geojson'.format(basename))
+        geojson_path = oos.path.join(output_dir, "{}.geojson".format(basename))
         write_chips_geojson(geojson_path, chips, crs=str(ds.crs), basename=basename)
 
 
@@ -148,23 +163,24 @@ def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
     _logger.info("Write chips geojson")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    with open(output_path, 'w') as f:
-        d = { 'type': 'FeatureCollection',
-              'features': [] }
+    with open(output_path, "w") as f:
+        d = {"type": "FeatureCollection", "features": []}
         for i, (chip, (fi, xi, yi)) in enumerate(chip_pairs):
             # Shapes will be stored in EPSG:4326 projection
-            if crs != 'EPSG:4326':
-                project = partial(pyproj.transform,
-                        pyproj.Proj(crs),
-                        pyproj.Proj('EPSG:4326'))
+            if crs != "EPSG:4326":
+                project = partial(
+                    pyproj.transform, pyproj.Proj(crs), pyproj.Proj("EPSG:4326")
+                )
                 chip_wgs = transform(project, chip)
             else:
                 chip_wgs = chip
-            filename = '{basename}_{x}_{y}.jpg'.format(basename=basename, x=xi, y=yi)
-            feature = { 'type': 'Feature',
-                        'geometry': mapping(chip_wgs),
-                        'properties': { 'id': i, 'x': xi, 'y': yi, 'filename': filename } }
-            d['features'].append(feature)
+            filename = "{basename}_{x}_{y}.jpg".format(basename=basename, x=xi, y=yi)
+            feature = {
+                "type": "Feature",
+                "geometry": mapping(chip_wgs),
+                "properties": {"id": i, "x": xi, "y": yi, "filename": filename},
+            }
+            d["features"].append(feature)
         f.write(json.dumps(d))
 
 
@@ -177,77 +193,63 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    parser = argparse.ArgumentParser(
-        description="Extract chips from a raster file")
+    parser = argparse.ArgumentParser(description="Extract chips from a raster file")
 
+    parser.add_argument("raster", help="input raster file")
     parser.add_argument(
-        'raster',
-        help='input raster file')
+        "--size", type=int, default=256, help="size of image tiles, in pixels"
+    )
     parser.add_argument(
-        '--size',
-        type=int,
-        default=256,
-        help='size of image tiles, in pixels')
-    parser.add_argument(
-        '--step-size',
-        type=int,
-        default=128,
-        help='step size (i.e. stride), in pixels')
-    parser.add_argument(
-        '--contour-shapefile',
-        help='contour shapefile')
-    parser.add_argument(
-	'-o',
-        '--output-dir',
-        help='output dir', default='.')
+        "--step-size", type=int, default=128, help="step size (i.e. stride), in pixels"
+    )
+    parser.add_argument("--contour-shapefile", help="contour shapefile")
+    parser.add_argument("-o", "--output-dir", help="output dir", default=".")
     parser.add_argument(
         "--rescale-intensity",
-        dest='rescale_intensity',
+        dest="rescale_intensity",
         default=True,
-        action='store_true',
-        help="rescale intensity")
+        action="store_true",
+        help="rescale intensity",
+    )
     parser.add_argument(
         "--no-rescale-intensity",
-        dest='rescale_intensity',
-        action='store_false',
-        help="do not rescale intensity")
+        dest="rescale_intensity",
+        action="store_false",
+        help="do not rescale intensity",
+    )
     parser.add_argument(
         "--lower-cut",
         type=int,
         default=2,
-        help=
-        "lower cut of percentiles for cumulative count in intensity rescaling")
+        help="lower cut of percentiles for cumulative count in intensity rescaling",
+    )
     parser.add_argument(
         "--upper-cut",
         type=int,
         default=98,
-        help=
-        "upper cut of percentiles for cumulative count in intensity rescaling")
-    parser.add_argument(
-        '-b',
-        '--bands',
-        nargs='+',
-        type=int,
-        help="RGB band indexes")
+        help="upper cut of percentiles for cumulative count in intensity rescaling",
+    )
+    parser.add_argument("-b", "--bands", nargs="+", type=int, help="RGB band indexes")
 
     parser.add_argument(
-        "--version",
-        action="version",
-        version="satproc {ver}".format(ver=__version__))
+        "--version", action="version", version="satproc {ver}".format(ver=__version__)
+    )
     parser.add_argument(
         "-v",
         "--verbose",
         dest="loglevel",
         help="set loglevel to INFO",
         action="store_const",
-        const=logging.INFO)
+        const=logging.INFO,
+    )
     parser.add_argument(
         "-vv",
         "--very-verbose",
         dest="loglevel",
         help="set loglevel to DEBUG",
         action="store_const",
-        const=logging.DEBUG)
+        const=logging.DEBUG,
+    )
     return parser.parse_args(args)
 
 
@@ -258,8 +260,9 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel, stream=sys.stdout,
-                        format=logformat, datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 
 def main(args):
@@ -274,17 +277,20 @@ def main(args):
     percentiles = None
     if args.rescale_intensity:
         _logger.info("Calculate percentiles")
-        percentiles = calculate_percentiles(args.raster,
-                lower_cut=args.lower_cut, upper_cut=args.upper_cut)
+        percentiles = calculate_percentiles(
+            args.raster, lower_cut=args.lower_cut, upper_cut=args.upper_cut
+        )
 
     _logger.info("Extract chips")
-    extract_chips(args.raster,
-            size=args.size,
-            step_size=args.step_size,
-            contour_shapefile=args.contour_shapefile,
-            percentiles=percentiles,
-            bands=args.bands,
-            output_dir=args.output_dir)
+    extract_chips(
+        args.raster,
+        size=args.size,
+        step_size=args.step_size,
+        contour_shapefile=args.contour_shapefile,
+        percentiles=percentiles,
+        bands=args.bands,
+        output_dir=args.output_dir,
+    )
 
     _logger.info("Script ends here")
 
