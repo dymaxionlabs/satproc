@@ -39,7 +39,25 @@ def sliding_windows(size, width, height):
 
 
 
-def build_dataset(dataset_path, raster, chip_size = 512, output_dir="."):
+def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
+    mask = rasterize(polygons, (win.height, win.width),
+        transform=rasterio.windows.transform(win, src.transform))
+
+    average = np.average(mask)
+    if average > 0.0:
+
+        # Write tile
+        kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
+        dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
+        with rasterio.open(dst_name, 'w', **kwargs) as dst:
+            dst.write(mask, 1)
+
+        return mask
+    else:
+        return None
+
+
+def build_dataset(dataset_path, raster, chip_size = 512, output_dir=".", instance = True, coco_output = False):
 
     blocks = fiona.open(dataset_path)
     block_shapes = [shape(b['geometry']) for b in blocks]
@@ -60,14 +78,15 @@ def build_dataset(dataset_path, raster, chip_size = 512, output_dir="."):
                 'width': win.width,
                 'transform': rasterio.windows.transform(win, src.transform)
             })
-            dst_name = '{}/{}.tif'.format(output_tiles, k)
+            dst_name = '{}/{}.tif'.format(os.path.join(output_dir,output_tiles), k)
             with rasterio.open(dst_name, 'w', **kwargs) as dst:
                 dst.write(src.read(window=win))
 
             # Append tile info on COCO dataset
-            image_info = pycococreatortools.create_image_info(
-                k, os.path.basename(dst_name), (win.height, win.width))
-            coco_output["images"].append(image_info)
+            if coco_output:
+                image_info = pycococreatortools.create_image_info(
+                    k, os.path.basename(dst_name), (win.height, win.width))
+                coco_output["images"].append(image_info)
 
             # Get intersecting shapes with current window
             bbox_shape = box(*bounds(win, src.transform))
@@ -76,25 +95,25 @@ def build_dataset(dataset_path, raster, chip_size = 512, output_dir="."):
                 if bbox_shape.intersects(s)
             ]
 
-            # For each polygon, create a mask
-            for i, poly in enumerate(intersect_polys):
-                mask = rasterize([poly], (win.height, win.width),
-                    transform=rasterio.windows.transform(win, src.transform))
+            if instance:
+                # For each polygon, create a mask
+                for i, poly in enumerate(intersect_polys):
+                    mask = mask_from_polygons(
+                        [poly], win, os.path.join(output_dir,output_tiles_gt), k, i)
 
-                average = np.average(mask)
-                if average > 0.0:
+                    if mask and coco_output:
+                        #Append annotation info on COCO dataset
+                        annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
+                        a = a + 1
+                        coco_output["annotations"].append(annotation_info)
+            else:
+                mask = mask_from_polygons(intersect_polys, win, os.path.join(output_dir,output_tiles_gt), k, 0)
 
-                    # Write tile
-                    kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
-                    dst_name = '{}/{}_{}.tif'.format(output_tiles_gt, k, i)
-                    with rasterio.open(dst_name, 'w', **kwargs) as dst:
-                        dst.write(mask, 1)
-
+                if mask and coco_output:    
                     #Append annotation info on COCO dataset
                     annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
                     a = a + 1
                     coco_output["annotations"].append(annotation_info)
-
 
             k = k + 1
     
