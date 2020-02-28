@@ -15,22 +15,6 @@ import rasterio
 output_tiles = 'chips/'
 output_tiles_gt = 'chips_gt/'
 
-#Remove this CONSTS, have to come by params
-INFO = {
-    "description": "Example Dataset",
-    "url": "https://github.com/waspinator/pycococreator",
-    "version": "0.1.0",
-    "year": 2018,
-    "contributor": "waspinator",
-    "date_created": datetime.datetime.utcnow().isoformat(' ')
-}
-
-LICENSES = [{
-    "id": 1,
-    "name": "Attribution-NonCommercial-ShareAlike License",
-    "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/"
-}]
-
 CATEGORIES = [{
     'id': 1,
     'name': 'field',
@@ -39,8 +23,8 @@ CATEGORIES = [{
 }]
 
 coco_output = {
-    "info": INFO,
-    "licenses": LICENSES,
+    "info": {},
+    "licenses": [],
     "categories": CATEGORIES,
     "images": [],
     "annotations": []
