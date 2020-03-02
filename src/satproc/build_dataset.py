@@ -37,6 +37,8 @@ def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
     if polygons:
         mask = rasterize(polygons, (win.height, win.width),
             transform=rasterio.windows.transform(win, src.transform))
+        if mask is None:
+            Exception("A empty mask Was generated - Image {} Mask {}".format(image_index, mask_index))
     else: 
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
 
@@ -117,9 +119,11 @@ def build_dataset(
                         a = a + 1
                         coco_output["annotations"].append(annotation_info)
             else:
+                #If there aren't any polygon, an empty mask is saved
                 mask = mask_from_polygons(None, win, os.path.join(output_dir,output_tiles_gt), k, i)
 
             k = k + 1
     
-    with open(os.path.join(output_dir,'annotations_coco.json'), 'w') as outfile:
-        json.dump(coco_output, outfile)
+    if coco_output:
+        with open(os.path.join(output_dir,'annotations_coco.json'), 'w') as outfile:
+            json.dump(coco_output, outfile)
