@@ -47,6 +47,10 @@ def parse_args(args):
                         type=int,
                         default=512,
                         help="size of image tiles, in pixels")
+    parser.add_argument("--step-size",
+                        type=int,
+                        default=128,
+                        help="step size (i.e. stride), in pixels")
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
@@ -106,6 +110,7 @@ def main(args):
         args.dataset,
         args.raster,
         chip_size=args.size,
+        step_size=args.step_size,
         output_dir=args.output_dir,
         instance=args.instance,
         coco_output=args.coco

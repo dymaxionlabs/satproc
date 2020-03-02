@@ -12,6 +12,8 @@ import numpy as np
 import os
 import rasterio
 
+from satproc.utils import sliding_windows
+
 output_tiles = 'chips/'
 output_tiles_gt = 'chips_gt/'
 
@@ -31,14 +33,6 @@ coco_output = {
 }
 
 
-def sliding_windows(size, width, height):
-    """Slide a window of +size+ pixels"""
-    for i in range(0, height, size):
-        for j in range(0, width, size):
-            yield Window(j, i, min(width - j, size), min(height - i, size))
-
-
-
 def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
     if polygons:
         mask = rasterize(polygons, (win.height, win.width),
@@ -55,7 +49,14 @@ def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
     return mask
 
 
-def build_dataset(dataset_path, raster, chip_size = 512, output_dir=".", instance = True, coco_output = False):
+def build_dataset(
+    dataset_path, 
+    raster, 
+    chip_size = 512, 
+    step_size = 128, 
+    output_dir=".", 
+    instance = True, 
+    coco_output = False):
 
     blocks = fiona.open(dataset_path)
     block_shapes = [shape(b['geometry']) for b in blocks]
@@ -66,7 +67,9 @@ def build_dataset(dataset_path, raster, chip_size = 512, output_dir=".", instanc
     os.makedirs(os.path.join(output_dir,output_tiles_gt), exist_ok=True)
 
     with rasterio.open(raster) as src:
-        windows = list(sliding_windows(chip_size, src.shape[1], src.shape[0]))
+        win_size = (chip_size, chip_size)
+        win_step_size = (step_size, step_size)
+        windows = list(sliding_windows(win_size, win_step_size, src.shape[1], src.shape[0]))
 
         for win in windows:
             # Write tif tile
