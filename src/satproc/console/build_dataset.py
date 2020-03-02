@@ -50,6 +50,17 @@ def parse_args(args):
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
+        "--instance", 
+        type=bool, 
+        help="generate a mask from each polygon if true, else a mask for each window", 
+        default=False)
+    parser.add_argument(
+        "--coco", 
+        type=bool, 
+        help="generate a json with dataset in coco format if true", 
+        default=False)
+
+    parser.add_argument(
         "-v",
         "--verbose",
         dest="loglevel",
@@ -96,6 +107,8 @@ def main(args):
         args.raster,
         chip_size=args.size,
         output_dir=args.output_dir,
+        instance=args.instance,
+        coco_output=args.coco
     )
 
 
