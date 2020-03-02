@@ -40,8 +40,11 @@ def sliding_windows(size, width, height):
 
 
 def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
-    mask = rasterize(polygons, (win.height, win.width),
-        transform=rasterio.windows.transform(win, src.transform))
+    if polygons:
+        mask = rasterize(polygons, (win.height, win.width),
+            transform=rasterio.windows.transform(win, src.transform))
+    else: 
+        mask = np.zeros((win.height, win.width), dtype=np.uint8)
 
     # Write tile
     kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
@@ -90,25 +93,28 @@ def build_dataset(dataset_path, raster, chip_size = 512, output_dir=".", instanc
                 if bbox_shape.intersects(s)
             ]
 
-            if instance:
-                # For each polygon, create a mask
-                for i, poly in enumerate(intersect_polys):
-                    mask = mask_from_polygons(
-                        [poly], win, os.path.join(output_dir,output_tiles_gt), k, i)
+            if len(intersect_polys) > 0:
+                if instance:
+                    # For each polygon, create a mask
+                    for i, poly in enumerate(intersect_polys):
+                        mask = mask_from_polygons(
+                            [poly], win, os.path.join(output_dir,output_tiles_gt), k, i)
 
-                    if mask and coco_output:
+                        if mask and coco_output:
+                            #Append annotation info on COCO dataset
+                            annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
+                            a = a + 1
+                            coco_output["annotations"].append(annotation_info)
+                else:
+                    mask = mask_from_polygons(intersect_polys, win, os.path.join(output_dir,output_tiles_gt), k, 0)
+
+                    if mask and coco_output:    
                         #Append annotation info on COCO dataset
                         annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
                         a = a + 1
                         coco_output["annotations"].append(annotation_info)
             else:
-                mask = mask_from_polygons(intersect_polys, win, os.path.join(output_dir,output_tiles_gt), k, 0)
-
-                if mask and coco_output:    
-                    #Append annotation info on COCO dataset
-                    annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
-                    a = a + 1
-                    coco_output["annotations"].append(annotation_info)
+                mask = mask_from_polygons(None, win, os.path.join(output_dir,output_tiles_gt), k, i)
 
             k = k + 1
     
