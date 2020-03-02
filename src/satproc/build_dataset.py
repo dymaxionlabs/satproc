@@ -43,18 +43,13 @@ def mask_from_polygons(polygons, win, mask_path, image_index, mask_index):
     mask = rasterize(polygons, (win.height, win.width),
         transform=rasterio.windows.transform(win, src.transform))
 
-    average = np.average(mask)
-    if average > 0.0:
+    # Write tile
+    kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
+    dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
+    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+        dst.write(mask, 1)
 
-        # Write tile
-        kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
-        dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
-        with rasterio.open(dst_name, 'w', **kwargs) as dst:
-            dst.write(mask, 1)
-
-        return mask
-    else:
-        return None
+    return mask
 
 
 def build_dataset(dataset_path, raster, chip_size = 512, output_dir=".", instance = True, coco_output = False):
