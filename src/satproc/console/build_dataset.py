@@ -39,7 +39,8 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Create dataset from a raster file")
+        description="Create dataset from a raster file",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("raster", help="input raster file")
     parser.add_argument("dataset", help="input shape or geojson file")

@@ -53,7 +53,10 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    parser = argparse.ArgumentParser(description="Just a Fibonacci demonstration")
+    parser = argparse.ArgumentParser(
+        description="Just a Fibonacci demonstration",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
     parser.add_argument(
         "--version", action="version", version="satproc {ver}".format(ver=__version__)
     )
