@@ -45,7 +45,11 @@ def extract_chips(raster,
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(
-            sliding_windows(win_size, win_step_size, ds.width, ds.height))
+            sliding_windows(win_size,
+                            win_step_size,
+                            ds.width,
+                            ds.height,
+                            whole=True))
         chips = []
 
         for c, (window, (i, j)) in tqdm(list(enumerate(windows))):

@@ -33,13 +33,16 @@ coco_output = {
 }
 
 
-def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index, mask_index):
+def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index,
+                       mask_index):
     if polygons:
         mask = rasterize(polygons, (win.height, win.width),
-            transform=rasterio.windows.transform(win, src.transform))
+                         transform=rasterio.windows.transform(
+                             win, src.transform))
         if mask is None:
-            Exception("A empty mask Was generated - Image {} Mask {}".format(image_index, mask_index))
-    else: 
+            Exception("A empty mask Was generated - Image {} Mask {}".format(
+                image_index, mask_index))
+    else:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
 
     # Write tile
@@ -51,37 +54,45 @@ def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index, mask_
     return mask
 
 
-def build_dataset(
-    dataset_path, 
-    raster, 
-    chip_size = 512, 
-    step_size = 128, 
-    output_dir=".", 
-    instance = True, 
-    coco = True):
+def build_dataset(dataset_path,
+                  raster,
+                  chip_size=512,
+                  step_size=128,
+                  output_dir=".",
+                  instance=True,
+                  coco=True):
 
     blocks = fiona.open(dataset_path)
     block_shapes = [shape(b['geometry']) for b in blocks]
 
     k = 0
     a = 0
-    os.makedirs(os.path.join(output_dir,output_tiles), exist_ok=True)
-    os.makedirs(os.path.join(output_dir,output_tiles_gt), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, output_tiles), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, output_tiles_gt), exist_ok=True)
 
     with rasterio.open(raster) as src:
         win_size = (chip_size, chip_size)
         win_step_size = (step_size, step_size)
-        windows = list(sliding_windows(win_size, win_step_size, src.shape[1], src.shape[0]))
+        windows = list(
+            sliding_windows(win_size,
+                            win_step_size,
+                            src.shape[1],
+                            src.shape[0],
+                            whole=True))
 
         for (win, (i, j)) in windows:
             # Write tif tile
             kwargs = src.meta.copy()
             kwargs.update({
-                'height': win.height,
-                'width': win.width,
-                'transform': rasterio.windows.transform(win, src.transform)
+                'height':
+                win.height,
+                'width':
+                win.width,
+                'transform':
+                rasterio.windows.transform(win, src.transform)
             })
-            dst_name = '{}/{}.tif'.format(os.path.join(output_dir,output_tiles), k)
+            dst_name = '{}/{}.tif'.format(
+                os.path.join(output_dir, output_tiles), k)
             with rasterio.open(dst_name, 'w', **kwargs) as dst:
                 dst.write(src.read(window=win))
 
@@ -102,30 +113,43 @@ def build_dataset(
                 if instance:
                     # For each polygon, create a mask
                     for i, poly in enumerate(intersect_polys):
-                        mask = mask_from_polygons([poly], win, os.path.join(output_dir,output_tiles_gt), 
-                            src, kwargs, k, i)
+                        mask = mask_from_polygons([poly], win,
+                                                  os.path.join(
+                                                      output_dir,
+                                                      output_tiles_gt), src,
+                                                  kwargs, k, i)
 
                         if mask is not None and coco:
                             #Append annotation info on COCO dataset
-                            annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
+                            annotation_info = pycococreatortools.create_annotation_info(
+                                a,
+                                k,
+                                CATEGORIES[0],
+                                mask, (512, 512),
+                                tolerance=2)
                             a = a + 1
                             coco_output["annotations"].append(annotation_info)
                 else:
-                    mask = mask_from_polygons(intersect_polys, win, os.path.join(output_dir,output_tiles_gt), 
-                        src, kwargs, k, 0)
+                    mask = mask_from_polygons(
+                        intersect_polys, win,
+                        os.path.join(output_dir, output_tiles_gt), src, kwargs,
+                        k, 0)
 
-                    if mask is not None and coco:    
+                    if mask is not None and coco:
                         #Append annotation info on COCO dataset
-                        annotation_info = pycococreatortools.create_annotation_info(a, k, CATEGORIES[0], mask, (512,512), tolerance=2)
+                        annotation_info = pycococreatortools.create_annotation_info(
+                            a, k, CATEGORIES[0], mask, (512, 512), tolerance=2)
                         a = a + 1
                         coco_output["annotations"].append(annotation_info)
             else:
                 #If there aren't any polygon, an empty mask is saved
-                mask = mask_from_polygons(None, win, os.path.join(output_dir,output_tiles_gt), 
-                    src, kwargs, k, i)
+                mask = mask_from_polygons(
+                    None, win, os.path.join(output_dir, output_tiles_gt), src,
+                    kwargs, k, i)
 
             k = k + 1
-    
+
     if coco:
-        with open(os.path.join(output_dir,'annotations_coco.json'), 'w') as outfile:
+        with open(os.path.join(output_dir, 'annotations_coco.json'),
+                  'w') as outfile:
             json.dump(coco_output, outfile)

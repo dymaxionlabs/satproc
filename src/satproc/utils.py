@@ -19,13 +19,17 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
-def sliding_windows(size, step_size, width, height):
+def sliding_windows(size, step_size, width, height, whole=False):
     """Slide a window of +size+ by moving it +step_size+ pixels"""
     w, h = size
     sw, sh = step_size
-    for pos_i, i in enumerate(range(0, height - h + 1, sh)):
-        for pos_j, j in enumerate(range(0, width - w + 1, sw)):
-            yield Window(j, i, w, h), (pos_i, pos_j)
+    end_i = height - h if whole else height
+    end_j = width - w if whole else width
+    for pos_i, i in enumerate(range(0, end_i, sh)):
+        for pos_j, j in enumerate(range(0, end_j, sw)):
+            real_w = w if whole else min(w, abs(width - j))
+            real_h = h if whole else min(h, abs(height - i))
+            yield Window(j, i, real_w, real_h), (pos_i, pos_j)
 
 
 def rescale_intensity(image, rescale_mode, rescale_range):
