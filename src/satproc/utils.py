@@ -9,6 +9,7 @@ import pyproj
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry import mapping
+from shapely.ops import transform
 from skimage import exposure
 from tqdm import tqdm
 
