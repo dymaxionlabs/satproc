@@ -28,6 +28,7 @@ def extract_chips(raster,
                   rescale_mode=None,
                   rescale_range=None,
                   bands=[1, 2, 3],
+                  type='JPG',
                   *,
                   size,
                   step_size,
@@ -61,11 +62,19 @@ def extract_chips(raster,
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
-            img_path = os.path.join(
+            if type == 'TIF':
+                img_path = os.path.join(
+                output_dir, "{basename}_{x}_{y}.tif".format(basename=basename,
+                                                            x=i,
+                                                            y=j))
+                image_was_saved = write_tif(img, img_path, ds, window)
+            else:
+                img_path = os.path.join(
                 output_dir, "{basename}_{x}_{y}.jpg".format(basename=basename,
                                                             x=i,
                                                             y=j))
-            image_was_saved = write_image(img, img_path)
+                image_was_saved = write_image(img, img_path)
+
             if image_was_saved:
                 chip_shape = box(*bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
@@ -86,3 +95,15 @@ def write_image(img, path, percentiles=None):
     if not os.path.exists(path):
         imsave(path, rgb)
     return True
+
+
+def write_tif(img, path, src, win):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    kwargs = src.meta.copy()
+    kwargs.update({
+        'height': win.height,
+        'width': win.width,
+        'transform': rasterio.windows.transform(win, src.transform)
+    })
+    with rasterio.open(path, 'w', **kwargs) as dst:
+        dst.write(src.read(window=win))
