@@ -191,8 +191,9 @@ def build_dataset(dataset_path,
                     
                     inter_bbox = window_box.intersection(bbox)
                     inter_bbox_bounds = inter_bbox.bounds
-                    minx, maxy = ~rasterio.windows.transform(win, src.transform) * (inter_bbox_bounds[0], inter_bbox_bounds[1])
-                    maxx, miny = ~rasterio.windows.transform(win, src.transform) * (inter_bbox_bounds[2], inter_bbox_bounds[3])
+                    win_transform = rasterio.windows.transform(win, src.transform)
+                    minx, maxy = ~win_transform * (inter_bbox_bounds[0], inter_bbox_bounds[1])
+                    maxx, miny = ~win_transform * (inter_bbox_bounds[2], inter_bbox_bounds[3])
                     segment = dict(x=minx, # - index[0],
                                     y=miny, # - index[1],
                                     width=round(maxx - minx),
