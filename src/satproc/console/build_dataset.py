@@ -60,10 +60,16 @@ def parse_args(args):
         help="generate a mask from each polygon if true, else a mask for each window", 
         default=False)
     parser.add_argument(
-        "--coco", 
-        type=bool, 
-        help="generate a json with dataset in coco format if true", 
-        default=False)
+        "--type", 
+        type=str, 
+        help="dataset output type ['COCO', 'Retinanet']", 
+        default='COCO')
+    
+    parser.add_argument(
+        "--label", 
+        type=str, 
+        help="annotation label for retinanet dataset", 
+        default='unknown')
 
     parser.add_argument(
         "-v",
@@ -114,7 +120,8 @@ def main(args):
         step_size=args.step_size,
         output_dir=args.output_dir,
         instance=args.instance,
-        coco_output=args.coco
+        type=args.type,
+        label=args.label,
     )
 
 
