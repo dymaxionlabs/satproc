@@ -15,6 +15,7 @@ import random
 import rasterio
 
 from satproc.utils import sliding_windows
+from satproc.chips import write_image
 
 output_tiles = 'chips/'
 output_tiles_gt = 'chips_gt/'
@@ -95,6 +96,7 @@ def build_dataset(dataset_path,
 
     if type == RETINANET:
         rows = []
+        bands = [1, 2, 3] 
     
 
     for raster in rasters:
@@ -112,22 +114,23 @@ def build_dataset(dataset_path,
                                 whole=True))
 
             for (win, (i, j)) in windows:
-                # Write tif tile
-                kwargs = src.meta.copy()
-                kwargs.update({
-                    'height':
-                    win.height,
-                    'width':
-                    win.width,
-                    'transform':
-                    rasterio.windows.transform(win, src.transform)
-                })
-                dst_name = '{}/{}.tif'.format(tile_path, k)
-                with rasterio.open(dst_name, 'w', **kwargs) as dst:
-                    dst.write(src.read(window=win))
-
-                # Append tile info on COCO dataset
                 if type == COCO:
+                    # Write tif tile
+                    kwargs = src.meta.copy()
+                    kwargs.update({
+                        'height':
+                        win.height,
+                        'width':
+                        win.width,
+                        'transform':
+                        rasterio.windows.transform(win, src.transform)
+                    })
+                    dst_name = '{}/{}.tif'.format(tile_path, k)
+                    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+                        dst.write(src.read(window=win))
+
+                    # Append tile info on COCO dataset
+                
                     image_info = pycococreatortools.create_image_info(
                         k, os.path.basename(dst_name), (win.height, win.width))
                     coco_output["images"].append(image_info)
@@ -177,6 +180,12 @@ def build_dataset(dataset_path,
                             None, win, tile_gt_path, src,
                             kwargs, k, i)
                 elif type == RETINANET:
+                    img = src.read(window=win)
+                    img = np.nan_to_num(img)
+                    img = np.array([img[b - 1, :, :] for b in bands])
+
+                    dst_name = '{}/{}.jpg'.format(tile_path, k)
+                    image_was_saved = write_image(img, dst_name)
 
                     #Generate segments
                     segments = []
@@ -217,7 +226,7 @@ def build_dataset(dataset_path,
                         row['x2'] = constrain_and_scale(x2, w, chip_size)
                         row['y1'] = constrain_and_scale(y1, h, chip_size)
                         row['y2'] = constrain_and_scale(y2, h, chip_size)
-                        row['tile_path'] = "{}.tif".format(os.path.join(output_tiles, os.path.basename(raster), str(k)))
+                        row['tile_path'] = "{}.jpg".format(os.path.join(output_tiles, os.path.basename(raster), str(k)))
                         row['label'] = s['label']
                         rows.append(row)
                 else:
