@@ -71,6 +71,54 @@ def parse_args(args):
         help="annotation label for retinanet dataset", 
         default='unknown')
 
+    parser.add_argument("-b",
+                    "--bands",
+                    nargs="+",
+                    type=int,
+                    help="RGB band indexes")
+
+    parser.add_argument(
+        "--rescale",
+        dest="rescale",
+        default=True,
+        action="store_true",
+        help="rescale intensity using percentiles (lower/upper cuts)",
+    )
+    parser.add_argument(
+        "--no-rescale",
+        dest="rescale",
+        action="store_false",
+        help="do not rescale intensity",
+    )
+    parser.add_argument("--rescale-mode",
+                    default="percentiles",
+                    choices=["percentiles", "values"],
+                    help="choose mode of intensity rescaling")
+
+    parser.add_argument(
+        "--lower-cut",
+        type=float,
+        default=2,
+        help=
+        "(for 'percentiles' mode) lower cut of percentiles for cumulative count in intensity rescaling",
+    )
+    parser.add_argument(
+        "--upper-cut",
+        type=float,
+        default=98,
+        help=
+        "(for 'percentiles' mode) upper cut of percentiles for cumulative count in intensity rescaling",
+    )
+
+    parser.add_argument(
+        '--min',
+        type=float,
+        help="(for 'values' mode) minimum value in intensity rescaling")
+    parser.add_argument(
+        '--max',
+        type=float,
+        help="(for 'values' mode) maximum value in intensity rescaling")
+
     parser.add_argument(
         "-v",
         "--verbose",
@@ -112,6 +160,19 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
+    bands = [1, 2, 3] if not args.bands else args.bands
+
+    rescale_mode = args.rescale_mode if args.rescale else None
+    if rescale_mode == 'percentiles':
+        rescale_range = (args.lower_cut, args.upper_cut)
+        _logger.info("Rescale intensity with percentiles %s", rescale_range)
+    elif rescale_mode == 'values':
+        rescale_range = (args.min, args.max)
+        _logger.info("Rescale intensity with values %s", rescale_range)
+    else:
+        rescale_range = None
+        _logger.info("No rescale intensity")
+
     _logger.info("Create dataset")
     build_dataset(
         args.dataset,
@@ -122,6 +183,9 @@ def main(args):
         instance=args.instance,
         type=args.type,
         label=args.label,
+        rescale_mode=rescale_mode,
+        rescale_range=rescale_range,
+        bands=bands,
     )
 
 
