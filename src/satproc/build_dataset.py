@@ -14,7 +14,7 @@ import os
 import random
 import rasterio
 
-from satproc.utils import sliding_windows
+from satproc.utils import sliding_windows, rescale_intensity
 from satproc.chips import write_image
 
 output_tiles = 'chips/'
@@ -79,6 +79,9 @@ def build_dataset(dataset_path,
                   instance=True,
                   type=COCO,
                   label='unknown',
+                  rescale_mode=None,
+                  rescale_range=None,
+                  bands=[1, 2, 3],
                 ):
 
     blocks = fiona.open(dataset_path)
@@ -95,9 +98,7 @@ def build_dataset(dataset_path,
         os.makedirs(tile_path, exist_ok=True)
 
     if type == RETINANET:
-        rows = []
-        bands = [1, 2, 3] 
-    
+        rows = []    
 
     for raster in rasters:
         k = 0
@@ -183,6 +184,9 @@ def build_dataset(dataset_path,
                     img = src.read(window=win)
                     img = np.nan_to_num(img)
                     img = np.array([img[b - 1, :, :] for b in bands])
+
+                    if rescale_mode:
+                        img = rescale_intensity(img, rescale_mode, rescale_range)
 
                     dst_name = '{}/{}.jpg'.format(tile_path, k)
                     image_was_saved = write_image(img, dst_name)
