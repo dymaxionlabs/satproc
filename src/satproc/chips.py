@@ -39,7 +39,7 @@ def extract_chips(raster,
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
 
-        if ds.count < 3:
+        if type == 'JPG' and ds.count < 3:
             raise RuntimeError(
                 "Raster must have 3 bands corresponding to RGB channels")
 
