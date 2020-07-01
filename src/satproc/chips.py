@@ -27,7 +27,7 @@ def extract_chips(raster,
                   contour_shapefile=None,
                   rescale_mode=None,
                   rescale_range=None,
-                  bands=[1, 2, 3],
+                  bands=None,
                   type='JPG',
                   *,
                   size,
@@ -42,6 +42,9 @@ def extract_chips(raster,
         if type == 'JPG' and ds.count < 3:
             raise RuntimeError(
                 "Raster must have 3 bands corresponding to RGB channels")
+
+        if bands is None:
+            bands = list(range(1, min(ds.count, 3) + 1))
 
         win_size = (size, size)
         win_step_size = (step_size, step_size)
