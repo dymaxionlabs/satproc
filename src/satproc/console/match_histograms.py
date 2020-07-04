@@ -13,7 +13,6 @@ import logging
 import sys
 
 from satproc import __version__
-from satproc.build_dataset import build_dataset
 from satproc.histogram import match_histograms
 
 __author__ = "Damián Silvani"
