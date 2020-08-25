@@ -55,27 +55,26 @@ def parse_args(args):
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
-        "--instance", 
-        type=bool, 
-        help="generate a mask from each polygon if true, else a mask for each window", 
+        "--instance",
+        type=bool,
+        help=
+        "generate a mask from each polygon if true, else a mask for each window",
         default=False)
-    parser.add_argument(
-        "--type", 
-        type=str, 
-        help="dataset output type ['COCO', 'Retinanet']", 
-        default='COCO')
-    
-    parser.add_argument(
-        "--label", 
-        type=str, 
-        help="annotation label for retinanet dataset", 
-        default='unknown')
+    parser.add_argument("--type",
+                        type=str,
+                        help="dataset output type ['COCO', 'Retinanet']",
+                        default='COCO')
+
+    parser.add_argument("--label",
+                        type=str,
+                        help="annotation label for retinanet dataset",
+                        default='unknown')
 
     parser.add_argument("-b",
-                    "--bands",
-                    nargs="+",
-                    type=int,
-                    help="RGB band indexes")
+                        "--bands",
+                        nargs="+",
+                        type=int,
+                        help="RGB band indexes")
 
     parser.add_argument(
         "--rescale",
@@ -91,9 +90,9 @@ def parse_args(args):
         help="do not rescale intensity",
     )
     parser.add_argument("--rescale-mode",
-                    default="percentiles",
-                    choices=["percentiles", "values"],
-                    help="choose mode of intensity rescaling")
+                        default="percentiles",
+                        choices=["percentiles", "values"],
+                        help="choose mode of intensity rescaling")
 
     parser.add_argument(
         "--lower-cut",

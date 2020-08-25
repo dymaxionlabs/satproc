@@ -57,10 +57,13 @@ def parse_args(args):
         description="Just a Fibonacci demonstration",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument(
-        "--version", action="version", version="satproc {ver}".format(ver=__version__)
-    )
-    parser.add_argument(dest="n", help="n-th Fibonacci number", type=int, metavar="INT")
+    parser.add_argument("--version",
+                        action="version",
+                        version="satproc {ver}".format(ver=__version__))
+    parser.add_argument(dest="n",
+                        help="n-th Fibonacci number",
+                        type=int,
+                        metavar="INT")
     parser.add_argument(
         "-v",
         "--verbose",
@@ -87,9 +90,10 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(
-        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    logging.basicConfig(level=loglevel,
+                        stream=sys.stdout,
+                        format=logformat,
+                        datefmt="%Y-%m-%d %H:%M:%S")
 
 
 def main(args):

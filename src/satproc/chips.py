@@ -67,15 +67,17 @@ def extract_chips(raster,
 
             if type == 'TIF':
                 img_path = os.path.join(
-                output_dir, "{basename}_{x}_{y}.tif".format(basename=basename,
-                                                            x=i,
-                                                            y=j))
+                    output_dir,
+                    "{basename}_{x}_{y}.tif".format(basename=basename,
+                                                    x=i,
+                                                    y=j))
                 image_was_saved = write_tif(img, img_path, ds, window)
             else:
                 img_path = os.path.join(
-                output_dir, "{basename}_{x}_{y}.jpg".format(basename=basename,
-                                                            x=i,
-                                                            y=j))
+                    output_dir,
+                    "{basename}_{x}_{y}.jpg".format(basename=basename,
+                                                    x=i,
+                                                    y=j))
                 image_was_saved = write_image(img, img_path)
 
             if image_was_saved:

@@ -102,7 +102,10 @@ def parse_args(args):
                         nargs="+",
                         type=int,
                         help="RGB band indexes")
-    parser.add_argument("-t", "--type", help="output chip format", default="JPG")
+    parser.add_argument("-t",
+                        "--type",
+                        help="output chip format",
+                        default="JPG")
 
     parser.add_argument("--version",
                         action="version",
