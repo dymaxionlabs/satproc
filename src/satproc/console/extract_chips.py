@@ -104,13 +104,13 @@ def parse_args(args):
         nargs="+",
         type=int,
         help=
-        "Band indexes. If type is JPG, defaults to (1, 2, 3). If type is TIF, defaults to the total band count."
+        "Band indexes. If type is 'jpg', defaults to (1, 2, 3). If type is 'tif', defaults to the total band count."
     )
     parser.add_argument("-t",
                         "--type",
                         help="output chip format",
-                        choices=['JPG', 'TIF'],
-                        default="JPG")
+                        choices=['jpg', 'tif'],
+                        default='tif')
 
     parser.add_argument("--version",
                         action="version",
@@ -131,7 +131,7 @@ def parse_args(args):
         action="store_const",
         const=logging.DEBUG,
     )
-    return parser.parse_args(args)
+    return parser.parse_args(args), parser
 
 
 def setup_logging(loglevel):
@@ -153,15 +153,20 @@ def main(args):
     Args:
       args ([str]): command line parameter list
     """
-    args = parse_args(args)
+    args, parser = parse_args(args)
     setup_logging(args.loglevel)
 
     bands = args.bands
     if not bands:
-        if args.type == 'JPG':
+        if args.type == 'jpg':
             bands = [1, 2, 3]
         else:
-            bands = range(1, get_raster_band_count(args.raster) + 1)
+            bands = list(range(1, get_raster_band_count(args.raster) + 1))
+
+    if type == 'jpg' and len(bands) != 3:
+        parser.error(
+            f"--type is jpg, but --bands does not have 3 band indexes: {bands}"
+        )
 
     rescale_mode = args.rescale_mode if args.rescale else None
     if rescale_mode == 'percentiles':

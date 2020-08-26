@@ -28,7 +28,7 @@ def extract_chips(raster,
                   rescale_mode=None,
                   rescale_range=None,
                   bands=None,
-                  type='JPG',
+                  type='tif',
                   *,
                   size,
                   step_size,
@@ -39,9 +39,10 @@ def extract_chips(raster,
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
 
-        if type == 'JPG' and ds.count < 3:
+        if any(b > ds.count for b in bands):
             raise RuntimeError(
-                "Raster must have 3 bands corresponding to RGB channels")
+                f"Raster has {ds.count} bands, but you asked to use {bands} band indexes"
+            )
 
         if bands is None:
             bands = list(range(1, min(ds.count, 3) + 1))
@@ -65,7 +66,7 @@ def extract_chips(raster,
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
-            if type == 'TIF':
+            if type == 'tif':
                 img_path = os.path.join(
                     output_dir,
                     "{basename}_{x}_{y}.tif".format(basename=basename,
