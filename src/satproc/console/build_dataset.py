@@ -58,7 +58,7 @@ def parse_args(args):
         "--instance",
         type=bool,
         help=
-        "generate a mask from each polygon if true, else a mask for each window",
+        "generate a mask from each polygon if true, else a single mask for each chip",
         default=False)
     parser.add_argument("--type",
                         type=str,

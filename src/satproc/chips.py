@@ -24,6 +24,27 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
+def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index,
+                       mask_index):
+    if polygons:
+        mask = rasterize(polygons, (win.height, win.width),
+                         transform=rasterio.windows.transform(
+                             win, src.transform))
+        if mask is None:
+            Exception("A empty mask Was generated - Image {} Mask {}".format(
+                image_index, mask_index))
+    else:
+        mask = np.zeros((win.height, win.width), dtype=np.uint8)
+
+    # Write tile
+    kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
+    dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
+    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+        dst.write(mask, 1)
+
+    return mask
+
+
 def extract_chips(raster,
                   contour_shapefile=None,
                   rescale_mode=None,
@@ -31,6 +52,9 @@ def extract_chips(raster,
                   bands=None,
                   type='tif',
                   write_geojson=False,
+                  labels=None,
+                  label_property='class',
+                  mask_type='class',
                   *,
                   size,
                   step_size,

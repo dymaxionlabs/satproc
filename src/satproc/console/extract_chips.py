@@ -40,7 +40,8 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Extract chips from a raster file",
+        description=
+        "Extract chips from a raster file, and optionally generate mask chips",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("raster", nargs='+', help="input raster file(s)")
@@ -52,6 +53,13 @@ def parse_args(args):
                         type=int,
                         default=128,
                         help="step size (i.e. stride), in pixels")
+    parser.add_argument("--labels", help="inpul label shapefile")
+    parser.add_argument("--label-property",
+                        default="class",
+                        help="label property to separate in classes")
+    parser.add_argument("--mask-type",
+                        choices=['single', 'class', 'instance'],
+                        default='class')
     parser.add_argument("--contour-shapefile", help="contour shapefile")
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
@@ -191,6 +199,7 @@ def main(args):
         _logger.info("No rescale intensity")
 
     _logger.info("Extract chips")
+<<<<<<< HEAD
 
     for raster in args.raster:
         extract_chips(raster,
@@ -202,7 +211,10 @@ def main(args):
                       bands=bands,
                       output_dir=args.output_dir,
                       type=args.type,
-                      write_geojson=args.write_geojson)
+                      write_geojson=args.write_geojsonm
+                      labels=args.labels,
+                      label_property=args.label_property,
+                      mask_type=args.mask_type)
 
 
 def run():
