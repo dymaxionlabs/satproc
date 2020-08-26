@@ -121,3 +121,8 @@ def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
             }
             d["features"].append(feature)
         f.write(json.dumps(d))
+
+
+def get_raster_band_count(path):
+    with rasterio.open(path) as src:
+        return src.count

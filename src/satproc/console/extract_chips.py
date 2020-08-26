@@ -21,6 +21,7 @@ import sys
 
 from satproc import __version__
 from satproc.chips import extract_chips
+from satproc.utils import get_raster_band_count
 
 __author__ = "Damián Silvani"
 __copyright__ = "Damián Silvani"
@@ -97,14 +98,18 @@ def parse_args(args):
         type=float,
         help="(for 'values' mode) maximum value in intensity rescaling")
 
-    parser.add_argument("-b",
-                        "--bands",
-                        nargs="+",
-                        type=int,
-                        help="RGB band indexes")
+    parser.add_argument(
+        "-b",
+        "--bands",
+        nargs="+",
+        type=int,
+        help=
+        "Band indexes. If type is JPG, defaults to (1, 2, 3). If type is TIF, defaults to the total band count."
+    )
     parser.add_argument("-t",
                         "--type",
                         help="output chip format",
+                        choices=['JPG', 'TIF'],
                         default="JPG")
 
     parser.add_argument("--version",
@@ -151,7 +156,12 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    bands = [1, 2, 3] if not args.bands else args.bands
+    bands = args.bands
+    if not bands:
+        if args.type == 'JPG':
+            bands = [1, 2, 3]
+        else:
+            bands = range(1, get_raster_band_count(args.raster) + 1)
 
     rescale_mode = args.rescale_mode if args.rescale else None
     if rescale_mode == 'percentiles':
