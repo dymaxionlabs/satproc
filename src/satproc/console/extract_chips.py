@@ -58,7 +58,7 @@ def parse_args(args):
     parser.add_argument(
         "--rescale",
         dest="rescale",
-        default=True,
+        default=False,
         action="store_true",
         help="rescale intensity using percentiles (lower/upper cuts)",
     )
@@ -104,7 +104,7 @@ def parse_args(args):
         nargs="+",
         type=int,
         help=
-        "Band indexes. If type is 'jpg', defaults to (1, 2, 3). If type is 'tif', defaults to the total band count."
+        "specify band indexes. If type is 'jpg', defaults to (1, 2, 3). If type is 'tif', defaults to the total band count."
     )
     parser.add_argument("-t",
                         "--type",
@@ -113,12 +113,12 @@ def parse_args(args):
                         default='tif')
 
     parser.add_argument("--write-geojson",
-                        help="Write a GeoJSON file of chip polygons",
+                        help="write a GeoJSON file of chip polygons",
                         dest="write_geojson",
                         action="store_true",
                         default=False)
     parser.add_argument("--no-write-geojson",
-                        help="Do not write a GeoJSON file of chip polygons",
+                        help="do not write a GeoJSON file of chip polygons",
                         dest="write_geojson",
                         action="store_false")
 
