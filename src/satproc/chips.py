@@ -30,6 +30,7 @@ def extract_chips(raster,
                   rescale_range=None,
                   bands=None,
                   type='tif',
+                  write_geojson=False,
                   *,
                   size,
                   step_size,
@@ -85,12 +86,14 @@ def extract_chips(raster,
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
-        geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
-        write_chips_geojson(geojson_path,
-                            chips,
-                            type=type,
-                            crs=str(ds.crs),
-                            basename=basename)
+        if write_geojson:
+            geojson_path = os.path.join(output_dir,
+                                        "{}.geojson".format(basename))
+            write_chips_geojson(geojson_path,
+                                chips,
+                                type=type,
+                                crs=str(ds.crs),
+                                basename=basename)
 
 
 def write_image(img, path, percentiles=None):

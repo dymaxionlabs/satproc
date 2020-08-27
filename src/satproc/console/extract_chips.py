@@ -112,6 +112,16 @@ def parse_args(args):
                         choices=['jpg', 'tif'],
                         default='tif')
 
+    parser.add_argument("--write-geojson",
+                        help="Write a GeoJSON file of chip polygons",
+                        dest="write_geojson",
+                        action="store_true",
+                        default=False)
+    parser.add_argument("--no-write-geojson",
+                        help="Do not write a GeoJSON file of chip polygons",
+                        dest="write_geojson",
+                        action="store_false")
+
     parser.add_argument("--version",
                         action="version",
                         version="satproc {ver}".format(ver=__version__))
@@ -180,17 +190,16 @@ def main(args):
         _logger.info("No rescale intensity")
 
     _logger.info("Extract chips")
-    extract_chips(
-        args.raster,
-        size=args.size,
-        step_size=args.step_size,
-        contour_shapefile=args.contour_shapefile,
-        rescale_mode=rescale_mode,
-        rescale_range=rescale_range,
-        bands=bands,
-        output_dir=args.output_dir,
-        type=args.type,
-    )
+    extract_chips(args.raster,
+                  size=args.size,
+                  step_size=args.step_size,
+                  contour_shapefile=args.contour_shapefile,
+                  rescale_mode=rescale_mode,
+                  rescale_range=rescale_range,
+                  bands=bands,
+                  output_dir=args.output_dir,
+                  type=args.type,
+                  write_geojson=args.write_geojson)
 
 
 def run():
