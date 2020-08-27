@@ -88,7 +88,7 @@ def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
         return res
 
 
-def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
+def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
     if not chip_pairs:
         _logger.warn("No chips to save")
         return
@@ -106,9 +106,7 @@ def write_chips_geojson(output_path, chip_pairs, *, crs, basename):
                 chip_wgs = transform(project, chip)
             else:
                 chip_wgs = chip
-            filename = "{basename}_{x}_{y}.jpg".format(basename=basename,
-                                                       x=xi,
-                                                       y=yi)
+            filename = f"{basename}_{xi}_{yi}.{type}"
             feature = {
                 "type": "Feature",
                 "geometry": mapping(chip_wgs),

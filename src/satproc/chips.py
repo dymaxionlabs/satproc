@@ -88,6 +88,7 @@ def extract_chips(raster,
         geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
         write_chips_geojson(geojson_path,
                             chips,
+                            type=type,
                             crs=str(ds.crs),
                             basename=basename)
 
