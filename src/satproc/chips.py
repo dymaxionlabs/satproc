@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from satproc.utils import (rescale_intensity, sliding_windows,
                            write_chips_geojson)
+from rasterio.features import rasterize
 
 # Workaround: Load fiona at the end to avoid segfault on box (???)
 import fiona
@@ -57,6 +58,7 @@ def extract_chips(raster,
                             whole=True))
         chips = []
 
+        meta = ds.meta.copy()
         for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
             _logger.debug("%s %s", window, (i, j))
             img = ds.read(window=window)
@@ -66,23 +68,20 @@ def extract_chips(raster,
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
+            img_path = os.path.join(output_dir, f"{basename}_{i}_{j}.{type}")
+
             if type == 'tif':
-                img_path = os.path.join(
-                    output_dir,
-                    "{basename}_{x}_{y}.tif".format(basename=basename,
-                                                    x=i,
-                                                    y=j))
-                image_was_saved = write_tif(img, img_path, ds, window)
+                image_was_saved = write_tif(img,
+                                            img_path,
+                                            window=window,
+                                            meta=meta,
+                                            transform=ds.transform)
             else:
-                img_path = os.path.join(
-                    output_dir,
-                    "{basename}_{x}_{y}.jpg".format(basename=basename,
-                                                    x=i,
-                                                    y=j))
                 image_was_saved = write_image(img, img_path)
 
             if image_was_saved:
-                chip_shape = box(*bounds(window, ds.transform))
+                chip_shape = box(
+                    *rasterio.windows.bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 
@@ -103,13 +102,15 @@ def write_image(img, path, percentiles=None):
     return True
 
 
-def write_tif(img, path, src, win):
+def write_tif(img, path, *, window, meta, transform):
+    if exposure.is_low_contrast(img):
+        return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    kwargs = src.meta.copy()
-    kwargs.update({
-        'height': win.height,
-        'width': win.width,
-        'transform': rasterio.windows.transform(win, src.transform)
+    meta.update({
+        'height': window.height,
+        'width': window.width,
+        'transform': rasterio.windows.transform(window, transform)
     })
-    with rasterio.open(path, 'w', **kwargs) as dst:
-        dst.write(src.read(window=win))
+    with rasterio.open(path, 'w', **meta) as dst:
+        dst.write(img)
+    return True
