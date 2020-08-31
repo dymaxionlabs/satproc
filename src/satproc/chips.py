@@ -72,7 +72,10 @@ def extract_chips(raster,
                 if label_property in block['properties']:
                     c = block['properties'][label_property]
                     geom = shape(block['geometry'])
-                    polys_dict[c].append(geom) if c in polys_dict else polys_dict[c] = [geom]
+                    if c in polys_dict:
+                        polys_dict[c].append(geom) 
+                    else:
+                        polys_dict[c] = [geom]
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
