@@ -199,7 +199,6 @@ def main(args):
         _logger.info("No rescale intensity")
 
     _logger.info("Extract chips")
-<<<<<<< HEAD
 
     for raster in args.raster:
         extract_chips(raster,
@@ -211,7 +210,7 @@ def main(args):
                       bands=bands,
                       output_dir=args.output_dir,
                       type=args.type,
-                      write_geojson=args.write_geojsonm
+                      write_geojson=args.write_geojson,
                       labels=args.labels,
                       label_property=args.label_property,
                       mask_type=args.mask_type)

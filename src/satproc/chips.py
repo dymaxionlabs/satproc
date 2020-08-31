@@ -4,7 +4,7 @@ import os
 import numpy as np
 import rasterio
 from rasterio.windows import bounds
-from shapely.geometry import box
+from shapely.geometry import shape, box
 from shapely.ops import transform
 from skimage import exposure
 from skimage.io import imsave
@@ -62,6 +62,18 @@ def extract_chips(raster,
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
+    if labels:
+        blocks = fiona.open(labels) 
+        masks_folder = os.path.join(output_dir, "masks")
+        os.makedirs(masks_folder, exist_ok=True)
+        if mask_type == 'class':
+            polys_dict = {}
+            for block in blocks:
+                if label_property in block['properties']:
+                    c = block['properties'][label_property]
+                    geom = shape(block['geometry'])
+                    polys_dict[c].append(geom) if c in polys_dict else polys_dict[c] = [geom]
+
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
 
@@ -109,6 +121,26 @@ def extract_chips(raster,
                     *rasterio.windows.bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
+
+                if labels:
+                    if mask_type == 'class':
+                        for key, class_blocks in polys_dict.items():
+                            intersect_polys = [
+                                chip_shape.intersection(s) for s in class_blocks
+                                if s.is_valid and chip_shape.intersects(s)
+                            ]
+                            if len(intersect_polys) > 0:
+                                mask_from_polygons(
+                                    intersect_polys, 
+                                    window,
+                                    masks_folder,
+                                    ds, 
+                                    ds.meta.copy(), 
+                                    f"{i}_{j}", 
+                                    key
+                                )
+
+
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
