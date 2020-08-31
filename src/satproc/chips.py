@@ -5,6 +5,7 @@ import numpy as np
 import rasterio
 from rasterio.windows import bounds
 from shapely.geometry import shape, box
+from shapely.validation import explain_validity
 from shapely.ops import transform
 from skimage import exposure
 from skimage.io import imsave
@@ -128,10 +129,14 @@ def extract_chips(raster,
                 if labels:
                     if mask_type == 'class':
                         for key, class_blocks in polys_dict.items():
-                            intersect_polys = [
-                                chip_shape.intersection(s) for s in class_blocks
-                                if s.is_valid and chip_shape.intersects(s)
-                            ]
+                            intersect_polys = []
+                            for s in class_blocks:
+                                if s.is_valid:
+                                    i = chip_shape.intersection(s)
+                                    if i:
+                                        intersect_polys.append(i)
+                                else:
+                                    _logger.warn(f"Invalid geometry {explain_validity(s)}")
                             if len(intersect_polys) > 0:
                                 mask_from_polygons(
                                     intersect_polys, 
