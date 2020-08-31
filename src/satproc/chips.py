@@ -132,9 +132,9 @@ def extract_chips(raster,
                             intersect_polys = []
                             for s in class_blocks:
                                 if s.is_valid:
-                                    i = chip_shape.intersection(s)
-                                    if i:
-                                        intersect_polys.append(i)
+                                    intersection = chip_shape.intersection(s)
+                                    if intersection:
+                                        intersect_polys.append(intersection)
                                 else:
                                     _logger.warn(f"Invalid geometry {explain_validity(s)}")
                             if len(intersect_polys) > 0:
