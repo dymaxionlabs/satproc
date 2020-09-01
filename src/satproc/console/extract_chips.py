@@ -43,7 +43,7 @@ def parse_args(args):
         description="Extract chips from a raster file",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("raster", help="input raster file")
+    parser.add_argument("raster", nargs='+', help="input raster file(s)")
     parser.add_argument("--size",
                         type=int,
                         default=256,
@@ -171,7 +171,8 @@ def main(args):
         if args.type == 'jpg':
             bands = [1, 2, 3]
         else:
-            bands = list(range(1, get_raster_band_count(args.raster) + 1))
+            some_raster = args.raster[0]
+            bands = list(range(1, get_raster_band_count(some_raster) + 1))
 
     if type == 'jpg' and len(bands) != 3:
         parser.error(
@@ -190,16 +191,18 @@ def main(args):
         _logger.info("No rescale intensity")
 
     _logger.info("Extract chips")
-    extract_chips(args.raster,
-                  size=args.size,
-                  step_size=args.step_size,
-                  contour_shapefile=args.contour_shapefile,
-                  rescale_mode=rescale_mode,
-                  rescale_range=rescale_range,
-                  bands=bands,
-                  output_dir=args.output_dir,
-                  type=args.type,
-                  write_geojson=args.write_geojson)
+
+    for raster in args.raster:
+        extract_chips(raster,
+                      size=args.size,
+                      step_size=args.step_size,
+                      contour_shapefile=args.contour_shapefile,
+                      rescale_mode=rescale_mode,
+                      rescale_range=rescale_range,
+                      bands=bands,
+                      output_dir=args.output_dir,
+                      type=args.type,
+                      write_geojson=args.write_geojson)
 
 
 def run():
