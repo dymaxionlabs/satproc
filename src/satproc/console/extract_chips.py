@@ -130,6 +130,8 @@ def parse_args(args):
                         dest="write_geojson",
                         action="store_false")
 
+    parser.add_argument("--crs", help="force CRS of input files")
+
     parser.add_argument("--version",
                         action="version",
                         version="satproc {ver}".format(ver=__version__))
@@ -211,6 +213,7 @@ def main(args):
                       output_dir=args.output_dir,
                       type=args.type,
                       write_geojson=args.write_geojson,
+                      crs=args.crs,
                       labels=args.labels,
                       label_property=args.label_property,
                       mask_type=args.mask_type)

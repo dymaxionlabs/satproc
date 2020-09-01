@@ -3,17 +3,19 @@ import os
 
 import numpy as np
 import rasterio
+from rasterio.crs import CRS
+from rasterio.features import rasterize
 from rasterio.windows import bounds
-from shapely.geometry import shape, box
-from shapely.validation import explain_validity
+from rasterio.warp import calculate_default_transform
+from shapely.geometry import box, shape
 from shapely.ops import transform
+from shapely.validation import explain_validity
 from skimage import exposure
 from skimage.io import imsave
 from tqdm import tqdm
 
 from satproc.utils import (rescale_intensity, sliding_windows,
                            write_chips_geojson)
-from rasterio.features import rasterize
 
 # Workaround: Load fiona at the end to avoid segfault on box (???)
 import fiona
@@ -56,6 +58,7 @@ def extract_chips(raster,
                   labels=None,
                   label_property='class',
                   mask_type='class',
+                  crs=None,
                   *,
                   size,
                   step_size,
@@ -64,7 +67,7 @@ def extract_chips(raster,
     basename, _ = os.path.splitext(os.path.basename(raster))
 
     if labels:
-        blocks = fiona.open(labels) 
+        blocks = fiona.open(labels)
         masks_folder = os.path.join(output_dir, "masks")
         os.makedirs(masks_folder, exist_ok=True)
         if mask_type == 'class':
@@ -74,7 +77,7 @@ def extract_chips(raster,
                     c = block['properties'][label_property]
                     geom = shape(block['geometry'])
                     if c in polys_dict:
-                        polys_dict[c].append(geom) 
+                        polys_dict[c].append(geom)
                     else:
                         polys_dict[c] = [geom]
 
@@ -100,6 +103,9 @@ def extract_chips(raster,
         chips = []
 
         meta = ds.meta.copy()
+        if crs:
+            meta['crs'] = CRS.from_string(crs)
+
         for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
             _logger.debug("%s %s", window, (i, j))
             img = ds.read(window=window)
@@ -115,7 +121,7 @@ def extract_chips(raster,
                 image_was_saved = write_tif(img,
                                             img_path,
                                             window=window,
-                                            meta=meta,
+                                            meta=meta.copy(),
                                             transform=ds.transform)
             else:
                 image_was_saved = write_image(img, img_path)
@@ -136,19 +142,14 @@ def extract_chips(raster,
                                     if intersection:
                                         intersect_polys.append(intersection)
                                 else:
-                                    _logger.warn(f"Invalid geometry {explain_validity(s)}")
+                                    _logger.warn(
+                                        f"Invalid geometry {explain_validity(s)}"
+                                    )
                             if len(intersect_polys) > 0:
-                                mask_from_polygons(
-                                    intersect_polys, 
-                                    window,
-                                    masks_folder,
-                                    ds, 
-                                    ds.meta.copy(), 
-                                    f"{i}_{j}", 
-                                    key
-                                )
-
-
+                                mask_from_polygons(intersect_polys,
+                                                   window, masks_folder, ds,
+                                                   meta.copy(), f"{i}_{j}",
+                                                   key)
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
@@ -156,7 +157,7 @@ def extract_chips(raster,
             write_chips_geojson(geojson_path,
                                 chips,
                                 type=type,
-                                crs=str(ds.crs),
+                                crs=str(meta['crs']),
                                 basename=basename)
 
 
@@ -175,6 +176,7 @@ def write_tif(img, path, *, window, meta, transform):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     meta.update({
+        'driver': 'GTiff',
         'height': window.height,
         'width': window.width,
         'transform': rasterio.windows.transform(window, transform)
