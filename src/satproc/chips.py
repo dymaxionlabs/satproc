@@ -4,7 +4,8 @@ import os
 import numpy as np
 import rasterio
 from rasterio.windows import bounds
-from shapely.geometry import box
+from shapely.geometry import shape, box
+from shapely.validation import explain_validity
 from shapely.ops import transform
 from skimage import exposure
 from skimage.io import imsave
@@ -24,6 +25,27 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
+def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index,
+                       mask_index):
+    if polygons:
+        mask = rasterize(polygons, (win.height, win.width),
+                         transform=rasterio.windows.transform(
+                             win, src.transform))
+        if mask is None:
+            Exception("A empty mask Was generated - Image {} Mask {}".format(
+                image_index, mask_index))
+    else:
+        mask = np.zeros((win.height, win.width), dtype=np.uint8)
+
+    # Write tile
+    kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
+    dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
+    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+        dst.write(mask, 1)
+
+    return mask
+
+
 def extract_chips(raster,
                   contour_shapefile=None,
                   rescale_mode=None,
@@ -31,12 +53,30 @@ def extract_chips(raster,
                   bands=None,
                   type='tif',
                   write_geojson=False,
+                  labels=None,
+                  label_property='class',
+                  mask_type='class',
                   *,
                   size,
                   step_size,
                   output_dir):
 
     basename, _ = os.path.splitext(os.path.basename(raster))
+
+    if labels:
+        blocks = fiona.open(labels) 
+        masks_folder = os.path.join(output_dir, "masks")
+        os.makedirs(masks_folder, exist_ok=True)
+        if mask_type == 'class':
+            polys_dict = {}
+            for block in blocks:
+                if label_property in block['properties']:
+                    c = block['properties'][label_property]
+                    geom = shape(block['geometry'])
+                    if c in polys_dict:
+                        polys_dict[c].append(geom) 
+                    else:
+                        polys_dict[c] = [geom]
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -85,6 +125,30 @@ def extract_chips(raster,
                     *rasterio.windows.bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
+
+                if labels:
+                    if mask_type == 'class':
+                        for key, class_blocks in polys_dict.items():
+                            intersect_polys = []
+                            for s in class_blocks:
+                                if s.is_valid:
+                                    intersection = chip_shape.intersection(s)
+                                    if intersection:
+                                        intersect_polys.append(intersection)
+                                else:
+                                    _logger.warn(f"Invalid geometry {explain_validity(s)}")
+                            if len(intersect_polys) > 0:
+                                mask_from_polygons(
+                                    intersect_polys, 
+                                    window,
+                                    masks_folder,
+                                    ds, 
+                                    ds.meta.copy(), 
+                                    f"{i}_{j}", 
+                                    key
+                                )
+
+
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
