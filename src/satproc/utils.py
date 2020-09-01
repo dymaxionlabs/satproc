@@ -20,6 +20,12 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
+def reproject_shape(shp, from_crs, to_crs):
+    project = partial(pyproj.transform, pyproj.Proj(from_crs),
+                      pyproj.Proj(to_crs))
+    return transform(project, shp)
+
+
 def sliding_windows(size, step_size, width, height, whole=False):
     """Slide a window of +size+ by moving it +step_size+ pixels"""
     w, h = size
@@ -98,12 +104,10 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
 
     with open(output_path, "w") as f:
         d = {"type": "FeatureCollection", "features": []}
-        for i, (chip, (fi, xi, yi)) in enumerate(chip_pairs):
+        for i, (chip, (_fi, xi, yi)) in enumerate(chip_pairs):
             # Shapes will be stored in EPSG:4326 projection
-            if crs != "EPSG:4326":
-                project = partial(pyproj.transform, pyproj.Proj(crs),
-                                  pyproj.Proj("EPSG:4326"))
-                chip_wgs = transform(project, chip)
+            if crs != "epsg:4326":
+                chip_wgs = reproject_shape(chip, crs, "epsg:4326")
             else:
                 chip_wgs = chip
             filename = f"{basename}_{xi}_{yi}.{type}"

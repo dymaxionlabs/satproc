@@ -8,7 +8,7 @@ from rasterio.features import rasterize
 from rasterio.windows import bounds
 from rasterio.warp import calculate_default_transform
 from shapely.geometry import box, shape
-from shapely.ops import transform
+from shapely.ops import transform, unary_union
 from shapely.validation import explain_validity
 from skimage import exposure
 from skimage.io import imsave
@@ -56,7 +56,7 @@ def mask_from_polygons(polygons, *, win, mask_path, src, kwargs, image_index,
 
 
 def extract_chips(raster,
-                  contour_shapefile=None,
+                  aoi=None,
                   rescale_mode=None,
                   rescale_range=None,
                   bands=None,
@@ -74,6 +74,12 @@ def extract_chips(raster,
     basename, _ = os.path.splitext(os.path.basename(raster))
 
     masks_folder = os.path.join(output_dir, "masks")
+
+    if aoi:
+        with fiona.open(aoi) as src:
+            aoi_polys = [shape(f['geometry']) for f in src]
+            aoi_polys = [shp for shp in aoi_polys if shp.is_valid]
+            aoi_poly = unary_union(aoi_polys)
 
     if labels and mask_type == 'class':
         with fiona.open(labels) as blocks:
@@ -114,6 +120,12 @@ def extract_chips(raster,
 
         for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
             _logger.debug("%s %s", window, (i, j))
+
+            chip_shape = box(*rasterio.windows.bounds(window, ds.transform))
+
+            if aoi and not chip_shape.intersects(aoi_poly):
+                continue
+
             img = ds.read(window=window)
             img = np.nan_to_num(img)
             img = np.array([img[b - 1, :, :] for b in bands])
@@ -133,8 +145,6 @@ def extract_chips(raster,
                 image_was_saved = write_image(img, img_path)
 
             if image_was_saved:
-                chip_shape = box(
-                    *rasterio.windows.bounds(window, ds.transform))
                 chip = (chip_shape, (c, i, j))
                 chips.append(chip)
 

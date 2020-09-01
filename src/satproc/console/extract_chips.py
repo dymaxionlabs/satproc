@@ -60,7 +60,7 @@ def parse_args(args):
     parser.add_argument("--mask-type",
                         choices=['single', 'class', 'instance'],
                         default='class')
-    parser.add_argument("--contour-shapefile", help="contour shapefile")
+    parser.add_argument("--aoi", help="Filter by AOI vector file")
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
@@ -206,7 +206,7 @@ def main(args):
         extract_chips(raster,
                       size=args.size,
                       step_size=args.step_size,
-                      contour_shapefile=args.contour_shapefile,
+                      aoi=args.aoi,
                       rescale_mode=rescale_mode,
                       rescale_range=rescale_range,
                       bands=bands,
