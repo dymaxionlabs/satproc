@@ -27,12 +27,13 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
-def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index,
+def mask_from_polygons(polygons, *, win, mask_path, src, kwargs, image_index,
                        mask_index):
+    transform = rasterio.windows.transform(win, src.transform)
     if polygons:
         mask = rasterize(polygons, (win.height, win.width),
-                         transform=rasterio.windows.transform(
-                             win, src.transform))
+                         default_value=255,
+                         transform=transform)
         if mask is None:
             Exception("A empty mask Was generated - Image {} Mask {}".format(
                 image_index, mask_index))
@@ -40,8 +41,14 @@ def mask_from_polygons(polygons, win, mask_path, src, kwargs, image_index,
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
 
     # Write tile
-    kwargs.update(dtype=rasterio.uint8, count=1, nodata=0)
+    kwargs.update(dtype=rasterio.uint8,
+                  count=1,
+                  nodata=0,
+                  transform=transform,
+                  width=win.width,
+                  height=win.height)
     dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
+    os.makedirs(os.path.dirname(dst_name), exist_ok=True)
     with rasterio.open(dst_name, 'w', **kwargs) as dst:
         dst.write(mask, 1)
 
@@ -66,11 +73,10 @@ def extract_chips(raster,
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
-    if labels:
-        blocks = fiona.open(labels)
-        masks_folder = os.path.join(output_dir, "masks")
-        os.makedirs(masks_folder, exist_ok=True)
-        if mask_type == 'class':
+    masks_folder = os.path.join(output_dir, "masks")
+
+    if labels and mask_type == 'class':
+        with fiona.open(labels) as blocks:
             polys_dict = {}
             for block in blocks:
                 if label_property in block['properties']:
@@ -147,9 +153,12 @@ def extract_chips(raster,
                                     )
                             if len(intersect_polys) > 0:
                                 mask_from_polygons(intersect_polys,
-                                                   window, masks_folder, ds,
-                                                   meta.copy(), f"{i}_{j}",
-                                                   key)
+                                                   win=window,
+                                                   mask_path=masks_folder,
+                                                   src=ds,
+                                                   kwargs=meta.copy(),
+                                                   image_index=f"{i}_{j}",
+                                                   mask_index=key)
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
