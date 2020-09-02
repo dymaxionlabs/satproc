@@ -78,13 +78,10 @@ def extract_chips(raster,
                     else:
                         polys_dict[c] = [geom]
         if classes:
-            avaibles_classes = []
             for c in classes:
                 if c not in polys_dict:
-                    _logger.warn(f"Invalid class {c}. Will be discard")
-                else:
-                    avaibles_classes.append(c)
-            classes = None if len(avaibles_classes) == 0 else avaibles_classes
+                    polys_dict[c] = []
+                    _logger.warn(f"No features of class '{c}' found. Will generate empty masks.")
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
