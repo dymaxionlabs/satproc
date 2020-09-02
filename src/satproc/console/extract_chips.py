@@ -57,6 +57,13 @@ def parse_args(args):
     parser.add_argument("--label-property",
                         default="class",
                         help="label property to separate in classes")
+    parser.add_argument(
+        "--classes",
+        nargs="+",
+        type=str,
+        help=
+        "specify classes order in result mask."
+    )
     parser.add_argument("--mask-type",
                         choices=['single', 'class', 'instance'],
                         default='class')
@@ -216,6 +223,7 @@ def main(args):
                       crs=args.crs,
                       labels=args.labels,
                       label_property=args.label_property,
+                      classes=args.classes,
                       mask_type=args.mask_type)
 
 

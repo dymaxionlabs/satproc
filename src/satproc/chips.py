@@ -27,31 +27,14 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
-def mask_from_polygons(polygons, *, win, mask_path, src, kwargs, image_index,
-                       mask_index):
-    transform = rasterio.windows.transform(win, src.transform)
-    if polygons:
-        mask = rasterize(polygons, (win.height, win.width),
-                         default_value=255,
-                         transform=transform)
-        if mask is None:
-            Exception("A empty mask Was generated - Image {} Mask {}".format(
-                image_index, mask_index))
-    else:
+def mask_from_polygons(polygons, *, win, t):
+    transform = rasterio.windows.transform(win, t)
+    if polygons is None or len(polygons) == 0:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
-
-    # Write tile
-    kwargs.update(dtype=rasterio.uint8,
-                  count=1,
-                  nodata=0,
-                  transform=transform,
-                  width=win.width,
-                  height=win.height)
-    dst_name = '{}/{}_{}.tif'.format(mask_path, image_index, mask_index)
-    os.makedirs(os.path.dirname(dst_name), exist_ok=True)
-    with rasterio.open(dst_name, 'w', **kwargs) as dst:
-        dst.write(mask, 1)
-
+    else:
+        mask = rasterize(polygons, (win.height, win.width),
+                    default_value=255,
+                    transform=transform)
     return mask
 
 
@@ -65,6 +48,7 @@ def extract_chips(raster,
                   labels=None,
                   label_property='class',
                   mask_type='class',
+                  classes=None,
                   crs=None,
                   *,
                   size,
@@ -74,6 +58,7 @@ def extract_chips(raster,
     basename, _ = os.path.splitext(os.path.basename(raster))
 
     masks_folder = os.path.join(output_dir, "masks")
+    image_folder = os.path.join(output_dir, "images")
 
     if aoi:
         with fiona.open(aoi) as src:
@@ -92,6 +77,14 @@ def extract_chips(raster,
                         polys_dict[c].append(geom)
                     else:
                         polys_dict[c] = [geom]
+        if classes:
+            avaibles_classes = []
+            for c in classes:
+                if c not in polys_dict:
+                    _logger.warn(f"Invalid class {c}. Will be discard")
+                else:
+                    avaibles_classes.append(c)
+            classes = None if len(avaibles_classes) == 0 else avaibles_classes
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -133,7 +126,7 @@ def extract_chips(raster,
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
-            img_path = os.path.join(output_dir, f"{basename}_{i}_{j}.{type}")
+            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
 
             if type == 'tif':
                 image_was_saved = write_tif(img,
@@ -150,9 +143,12 @@ def extract_chips(raster,
 
                 if labels:
                     if mask_type == 'class':
-                        for key, class_blocks in polys_dict.items():
+                        multi_band_mask = []
+                        t = ds.transform
+                        keys = classes if classes is not None else polys_dict.keys()
+                        for k in keys:
                             intersect_polys = []
-                            for s in class_blocks:
+                            for s in polys_dict[k]:
                                 if s.is_valid:
                                     intersection = chip_shape.intersection(s)
                                     if intersection:
@@ -161,14 +157,21 @@ def extract_chips(raster,
                                     _logger.warn(
                                         f"Invalid geometry {explain_validity(s)}"
                                     )
-                            if len(intersect_polys) > 0:
-                                mask_from_polygons(intersect_polys,
-                                                   win=window,
-                                                   mask_path=masks_folder,
-                                                   src=ds,
-                                                   kwargs=meta.copy(),
-                                                   image_index=f"{i}_{j}",
-                                                   mask_index=key)
+                            multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=t))
+
+                        kwargs = meta.copy()
+                        kwargs.update(dtype=rasterio.uint8,
+                                        count=len(multi_band_mask),
+                                        nodata=0,
+                                        transform = rasterio.windows.transform(window, t),
+                                        width=window.width,
+                                        height=window.height)
+                        
+                        dst_name = os.path.join(masks_folder, f"{basename}_{i}_{j}.tif")
+                        os.makedirs(os.path.dirname(dst_name), exist_ok=True)
+                        with rasterio.open(dst_name, 'w', **kwargs) as dst:
+                            for i in range(len(multi_band_mask)):
+                                dst.write(multi_band_mask[i], i+1)
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
