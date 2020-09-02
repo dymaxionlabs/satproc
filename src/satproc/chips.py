@@ -157,13 +157,14 @@ def extract_chips(raster,
                             multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=t))
 
                         kwargs = meta.copy()
-                        kwargs.update(dtype=rasterio.uint8,
-                                        count=len(multi_band_mask),
-                                        nodata=0,
-                                        transform = rasterio.windows.transform(window, t),
-                                        width=window.width,
-                                        height=window.height)
-                        
+                        kwargs.update(driver='GTiff',
+                                      dtype=rasterio.uint8,
+                                      count=len(multi_band_mask),
+                                      nodata=0,
+                                      transform=rasterio.windows.transform(window, t),
+                                      width=window.width,
+                                      height=window.height)
+
                         dst_name = os.path.join(masks_folder, f"{basename}_{i}_{j}.tif")
                         os.makedirs(os.path.dirname(dst_name), exist_ok=True)
                         with rasterio.open(dst_name, 'w', **kwargs) as dst:
