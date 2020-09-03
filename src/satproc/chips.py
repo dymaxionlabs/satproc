@@ -38,6 +38,67 @@ def mask_from_polygons(polygons, *, win, t):
     return mask
 
 
+def multiband_chip_mask_by_classes(classes,     
+                                    transform, 
+                                    window, 
+                                    output_dir, 
+                                    mask_name, 
+                                    label_property, 
+                                    polys_dict=None, 
+                                    label_path=None, 
+                                    metadata={}):
+    multi_band_mask = []
+    if polys_dict is None and label_path is not None:
+        polys_dict = classify_polygons(label_path, label_property, classes)
+
+    chip_shape = box(*rasterio.windows.bounds(window, transform))
+    for k in classes:
+        intersect_polys = []
+        for s in polys_dict[k]:
+            if s.is_valid:
+                intersection = chip_shape.intersection(s)
+                if intersection:
+                    intersect_polys.append(intersection)
+            else:
+                _logger.warn(
+                    f"Invalid geometry {explain_validity(s)}"
+                )
+        multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=transform))
+
+    kwargs = metadata.copy()
+    kwargs.update(driver='GTiff',
+                    dtype=rasterio.uint8,
+                    count=len(multi_band_mask),
+                    nodata=0,
+                    transform = rasterio.windows.transform(window, transform),
+                    width=window.width,
+                    height=window.height)
+    
+    dst_name = os.path.join(output_dir, mask_name)
+    os.makedirs(os.path.dirname(dst_name), exist_ok=True)
+    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+        for i in range(len(multi_band_mask)):
+            dst.write(multi_band_mask[i], i+1)
+
+
+def classify_polygons(labels, label_property, classes):
+    with fiona.open(labels) as blocks:
+        polys_dict = {}
+        for block in blocks:
+            if label_property in block['properties']:
+                c = block['properties'][label_property]
+                geom = shape(block['geometry'])
+                if c in polys_dict:
+                    polys_dict[c].append(geom)
+                else:
+                    polys_dict[c] = [geom]
+    if classes:
+        for c in classes:
+            if c not in polys_dict:
+                polys_dict[c] = []
+                _logger.warn(f"No features of class '{c}' found. Will generate empty masks.")
+    return polys_dict
+
 def extract_chips(raster,
                   aoi=None,
                   rescale_mode=None,
@@ -67,21 +128,7 @@ def extract_chips(raster,
             aoi_poly = unary_union(aoi_polys)
 
     if labels and mask_type == 'class':
-        with fiona.open(labels) as blocks:
-            polys_dict = {}
-            for block in blocks:
-                if label_property in block['properties']:
-                    c = block['properties'][label_property]
-                    geom = shape(block['geometry'])
-                    if c in polys_dict:
-                        polys_dict[c].append(geom)
-                    else:
-                        polys_dict[c] = [geom]
-        if classes:
-            for c in classes:
-                if c not in polys_dict:
-                    polys_dict[c] = []
-                    _logger.warn(f"No features of class '{c}' found. Will generate empty masks.")
+        polys_dict = classify_polygons(labels, label_property, classes)
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -140,36 +187,18 @@ def extract_chips(raster,
 
                 if labels:
                     if mask_type == 'class':
-                        multi_band_mask = []
-                        t = ds.transform
                         keys = classes if classes is not None else polys_dict.keys()
-                        for k in keys:
-                            intersect_polys = []
-                            for s in polys_dict[k]:
-                                if s.is_valid:
-                                    intersection = chip_shape.intersection(s)
-                                    if intersection:
-                                        intersect_polys.append(intersection)
-                                else:
-                                    _logger.warn(
-                                        f"Invalid geometry {explain_validity(s)}"
-                                    )
-                            multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=t))
-
-                        kwargs = meta.copy()
-                        kwargs.update(driver='GTiff',
-                                      dtype=rasterio.uint8,
-                                      count=len(multi_band_mask),
-                                      nodata=0,
-                                      transform=rasterio.windows.transform(window, t),
-                                      width=window.width,
-                                      height=window.height)
-
-                        dst_name = os.path.join(masks_folder, f"{basename}_{i}_{j}.tif")
-                        os.makedirs(os.path.dirname(dst_name), exist_ok=True)
-                        with rasterio.open(dst_name, 'w', **kwargs) as dst:
-                            for i in range(len(multi_band_mask)):
-                                dst.write(multi_band_mask[i], i+1)
+                        t = ds.transform
+                        multiband_chip_mask_by_classes(
+                            classes=keys,
+                            transform=t,
+                            window=window,
+                            polys_dict=polys_dict,
+                            metadata=meta,
+                            output_dir=masks_folder,
+                            mask_name=f"{basename}_{i}_{j}.tif",
+                            label_property=label_property,
+                        )
 
         if write_geojson:
             geojson_path = os.path.join(output_dir,
