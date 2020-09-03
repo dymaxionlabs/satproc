@@ -5,9 +5,8 @@ import numpy as np
 import rasterio
 from rasterio.crs import CRS
 from rasterio.features import rasterize
-from rasterio.windows import bounds, Window
+from rasterio.windows import bounds
 from rasterio.warp import calculate_default_transform
-from rasterio.transform import Affine
 from shapely.geometry import box, shape
 from shapely.ops import transform, unary_union
 from shapely.validation import explain_validity
@@ -51,13 +50,6 @@ def multiband_chip_mask_by_classes(classes,
     multi_band_mask = []
     if polys_dict is None and label_path is not None:
         polys_dict = classify_polygons(label_path, label_property, classes)
-
-    if type(transform) == list:
-        transform = Affine(transform[0], transform[1], transform[2], 
-                            transform[3], transform[4], transform[5])
-
-    if type(window) == list:
-        window = Window(window[0], window[1], window[2], window[3])
 
     chip_shape = box(*rasterio.windows.bounds(window, transform))
     for k in classes:
