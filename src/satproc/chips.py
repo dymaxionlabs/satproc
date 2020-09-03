@@ -66,7 +66,8 @@ def multiband_chip_mask_by_classes(classes,
         multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=transform))
 
     kwargs = metadata.copy()
-    kwargs.update(dtype=rasterio.uint8,
+    kwargs.update(driver='GTiff',
+                    dtype=rasterio.uint8,
                     count=len(multi_band_mask),
                     nodata=0,
                     transform = rasterio.windows.transform(window, transform),
