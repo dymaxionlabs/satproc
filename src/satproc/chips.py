@@ -27,6 +27,15 @@ __license__ = "mit"
 _logger = logging.getLogger(__name__)
 
 
+def get_shape(feature):
+    geom = feature['geometry']
+    try:
+        return shape(geom)
+    except Exception as err:
+        _logger.warn("Failed to get shape from feature %s: %s", feature, err)
+        return None
+
+
 def mask_from_polygons(polygons, *, win, t):
     transform = rasterio.windows.transform(win, t)
     if polygons is None or len(polygons) == 0:
@@ -123,8 +132,8 @@ def extract_chips(raster,
 
     if aoi:
         with fiona.open(aoi) as src:
-            aoi_polys = [shape(f['geometry']) for f in src]
-            aoi_polys = [shp for shp in aoi_polys if shp.is_valid]
+            aoi_polys = [get_shape(f) for f in src]
+            aoi_polys = [shp for shp in aoi_polys if shp and shp.is_valid]
             aoi_poly = unary_union(aoi_polys)
 
     if labels and mask_type == 'class':
