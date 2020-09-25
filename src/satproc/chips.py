@@ -186,7 +186,8 @@ def extract_chips(raster,
                                             img_path,
                                             window=window,
                                             meta=meta.copy(),
-                                            transform=ds.transform)
+                                            transform=ds.transform,
+                                            bands=bands)
             else:
                 image_was_saved = write_image(img, img_path)
 
@@ -229,7 +230,7 @@ def write_image(img, path, percentiles=None):
     return True
 
 
-def write_tif(img, path, *, window, meta, transform):
+def write_tif(img, path, *, window, meta, transform, bands):
     if exposure.is_low_contrast(img):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -237,8 +238,10 @@ def write_tif(img, path, *, window, meta, transform):
         'driver': 'GTiff',
         'height': window.height,
         'width': window.width,
-        'transform': rasterio.windows.transform(window, transform)
+        'transform': rasterio.windows.transform(window, transform),
+        'count': len(bands)
     })
+    img = np.array([img[b-1, :, :] for b in bands])
     with rasterio.open(path, 'w', **meta) as dst:
         dst.write(img)
     return True
