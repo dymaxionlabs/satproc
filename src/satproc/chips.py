@@ -42,20 +42,19 @@ def mask_from_polygons(polygons, *, win, t):
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
     else:
         mask = rasterize(polygons, (win.height, win.width),
-                    default_value=255,
-                    transform=transform)
+                         default_value=255,
+                         transform=transform)
     return mask
 
 
-def multiband_chip_mask_by_classes(classes,     
-                                    transform, 
-                                    window, 
-                                    output_dir, 
-                                    mask_name, 
-                                    label_property, 
-                                    polys_dict=None, 
-                                    label_path=None, 
-                                    metadata={}):
+def multiband_chip_mask_by_classes(classes,
+                                   transform,
+                                   window,
+                                   mask_path,
+                                   label_property,
+                                   polys_dict=None,
+                                   label_path=None,
+                                   metadata={}):
     multi_band_mask = []
     if polys_dict is None and label_path is not None:
         polys_dict = classify_polygons(label_path, label_property, classes)
@@ -69,25 +68,23 @@ def multiband_chip_mask_by_classes(classes,
                 if intersection:
                     intersect_polys.append(intersection)
             else:
-                _logger.warn(
-                    f"Invalid geometry {explain_validity(s)}"
-                )
-        multi_band_mask.append(mask_from_polygons(intersect_polys, win=window, t=transform))
+                _logger.warn(f"Invalid geometry {explain_validity(s)}")
+        multi_band_mask.append(
+            mask_from_polygons(intersect_polys, win=window, t=transform))
 
     kwargs = metadata.copy()
     kwargs.update(driver='GTiff',
-                    dtype=rasterio.uint8,
-                    count=len(multi_band_mask),
-                    nodata=0,
-                    transform = rasterio.windows.transform(window, transform),
-                    width=window.width,
-                    height=window.height)
-    
-    dst_name = os.path.join(output_dir, mask_name)
-    os.makedirs(os.path.dirname(dst_name), exist_ok=True)
-    with rasterio.open(dst_name, 'w', **kwargs) as dst:
+                  dtype=rasterio.uint8,
+                  count=len(multi_band_mask),
+                  nodata=0,
+                  transform=rasterio.windows.transform(window, transform),
+                  width=window.width,
+                  height=window.height)
+
+    os.makedirs(os.path.dirname(mask_path), exist_ok=True)
+    with rasterio.open(mask_path, 'w', **kwargs) as dst:
         for i in range(len(multi_band_mask)):
-            dst.write(multi_band_mask[i], i+1)
+            dst.write(multi_band_mask[i], i + 1)
 
 
 def classify_polygons(labels, label_property, classes):
@@ -105,11 +102,32 @@ def classify_polygons(labels, label_property, classes):
         for c in classes:
             if c not in polys_dict:
                 polys_dict[c] = []
-                _logger.warn(f"No features of class '{c}' found. Will generate empty masks.")
+                _logger.warn(
+                    f"No features of class '{c}' found. Will generate empty masks."
+                )
     return polys_dict
 
+
+def prepare_aoi_shape(aoi):
+    with fiona.open(aoi) as src:
+        aoi_polys = [get_shape(f) for f in src]
+        aoi_polys = [shp for shp in aoi_polys if shp and shp.is_valid]
+        aoi_poly = unary_union(aoi_polys)
+        return aoi_poly
+
+
+def prepare_label_shapes(labels,
+                         mask_type='class',
+                         label_property='class',
+                         classes=None):
+    if mask_type == 'class':
+        polys_dict = classify_polygons(labels, label_property, classes)
+        return polys_dict
+    else:
+        raise RuntimeError(f"mask type '{mask_type}' not supported")
+
+
 def extract_chips(raster,
-                  aoi=None,
                   rescale_mode=None,
                   rescale_range=None,
                   bands=None,
@@ -120,6 +138,9 @@ def extract_chips(raster,
                   mask_type='class',
                   classes=None,
                   crs=None,
+                  skip_existing=True,
+                  aoi_poly=None,
+                  polys_dict=None,
                   *,
                   size,
                   step_size,
@@ -129,15 +150,6 @@ def extract_chips(raster,
 
     masks_folder = os.path.join(output_dir, "masks")
     image_folder = os.path.join(output_dir, "images")
-
-    if aoi:
-        with fiona.open(aoi) as src:
-            aoi_polys = [get_shape(f) for f in src]
-            aoi_polys = [shp for shp in aoi_polys if shp and shp.is_valid]
-            aoi_poly = unary_union(aoi_polys)
-
-    if labels and mask_type == 'class':
-        polys_dict = classify_polygons(labels, label_property, classes)
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -167,9 +179,16 @@ def extract_chips(raster,
         for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
             _logger.debug("%s %s", window, (i, j))
 
+            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
+            mask_path = os.path.join(masks_folder,
+                                     f"{basename}_{i}_{j}.{type}")
+            if skip_existing and os.path.exists(img_path) and (
+                    not labels or os.path.exists(mask_path)):
+                continue
+
             chip_shape = box(*rasterio.windows.bounds(window, ds.transform))
 
-            if aoi and not chip_shape.intersects(aoi_poly):
+            if aoi_poly and not chip_shape.intersects(aoi_poly):
                 continue
 
             img = ds.read(window=window)
@@ -178,8 +197,6 @@ def extract_chips(raster,
 
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
-
-            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
 
             if type == 'tif':
                 image_was_saved = write_tif(img,
@@ -197,7 +214,8 @@ def extract_chips(raster,
 
                 if labels:
                     if mask_type == 'class':
-                        keys = classes if classes is not None else polys_dict.keys()
+                        keys = classes if classes is not None else polys_dict.keys(
+                        )
                         t = ds.transform
                         multiband_chip_mask_by_classes(
                             classes=keys,
@@ -205,8 +223,7 @@ def extract_chips(raster,
                             window=window,
                             polys_dict=polys_dict,
                             metadata=meta,
-                            output_dir=masks_folder,
-                            mask_name=f"{basename}_{i}_{j}.tif",
+                            mask_path=mask_path,
                             label_property=label_property,
                         )
 
@@ -241,7 +258,7 @@ def write_tif(img, path, *, window, meta, transform, bands):
         'transform': rasterio.windows.transform(window, transform),
         'count': len(bands)
     })
-    img = np.array([img[b-1, :, :] for b in bands])
+    img = np.array([img[b - 1, :, :] for b in bands])
     with rasterio.open(path, 'w', **meta) as dst:
         dst.write(img)
     return True

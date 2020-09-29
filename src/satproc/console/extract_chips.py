@@ -20,8 +20,9 @@ import logging
 import sys
 
 from satproc import __version__
-from satproc.chips import extract_chips
+from satproc.chips import extract_chips, prepare_label_shapes, prepare_aoi_shape
 from satproc.utils import get_raster_band_count
+from tqdm import tqdm
 
 __author__ = "Damián Silvani"
 __copyright__ = "Damián Silvani"
@@ -57,13 +58,10 @@ def parse_args(args):
     parser.add_argument("--label-property",
                         default="class",
                         help="label property to separate in classes")
-    parser.add_argument(
-        "--classes",
-        nargs="+",
-        type=str,
-        help=
-        "specify classes order in result mask."
-    )
+    parser.add_argument("--classes",
+                        nargs="+",
+                        type=str,
+                        help="specify classes order in result mask.")
     parser.add_argument("--mask-type",
                         choices=['single', 'class', 'instance'],
                         default='class')
@@ -139,6 +137,20 @@ def parse_args(args):
 
     parser.add_argument("--crs", help="force CRS of input files")
 
+    parser.add_argument(
+        "--skip-existing",
+        dest="skip_existing",
+        default=True,
+        action="store_true",
+        help="skip already existing chips (and masks)",
+    )
+    parser.add_argument(
+        "--no-skip-existing",
+        dest="skip_existing",
+        action="store_false",
+        help="do not skip already existing chips (and masks)",
+    )
+
     parser.add_argument("--version",
                         action="version",
                         version="satproc {ver}".format(ver=__version__))
@@ -209,11 +221,24 @@ def main(args):
 
     _logger.info("Extract chips")
 
-    for raster in args.raster:
+    if args.aoi:
+        aoi_poly = prepare_aoi_shape(args.aoi)
+    else:
+        aoi_poly = None
+
+    if args.labels:
+        polys_dict = prepare_label_shapes(args.labels,
+                                          mask_type=args.mask_type,
+                                          label_property=args.label_property,
+                                          classes=args.classes)
+    else:
+        polys_dict = None
+
+    for raster in tqdm(args.raster):
         extract_chips(raster,
                       size=args.size,
                       step_size=args.step_size,
-                      aoi=args.aoi,
+                      aoi_poly=aoi_poly,
                       rescale_mode=rescale_mode,
                       rescale_range=rescale_range,
                       bands=bands,
@@ -224,7 +249,8 @@ def main(args):
                       labels=args.labels,
                       label_property=args.label_property,
                       classes=args.classes,
-                      mask_type=args.mask_type)
+                      mask_type=args.mask_type,
+                      polys_dict=polys_dict)
 
 
 def run():
