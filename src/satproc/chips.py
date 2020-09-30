@@ -54,23 +54,17 @@ def multiband_chip_mask_by_classes(classes,
                                    label_property,
                                    polys_dict=None,
                                    label_path=None,
+                                   window_shape=None,
                                    metadata={}):
     multi_band_mask = []
     if polys_dict is None and label_path is not None:
         polys_dict = classify_polygons(label_path, label_property, classes)
+    if window_shape is None:
+        window_shape = box(*rasterio.windows.bounds(window, transform))
 
-    chip_shape = box(*rasterio.windows.bounds(window, transform))
     for k in classes:
-        intersect_polys = []
-        for s in polys_dict[k]:
-            if s.is_valid:
-                intersection = chip_shape.intersection(s)
-                if intersection:
-                    intersect_polys.append(intersection)
-            else:
-                _logger.warn(f"Invalid geometry {explain_validity(s)}")
         multi_band_mask.append(
-            mask_from_polygons(intersect_polys, win=window, t=transform))
+            mask_from_polygons(polys_dict[k], win=window, t=transform))
 
     kwargs = metadata.copy()
     kwargs.update(driver='GTiff',
@@ -232,6 +226,7 @@ def extract_chips(raster,
                             classes=keys,
                             transform=ds.transform,
                             window=window,
+                            window_shape=win_shape,
                             polys_dict=polys_dict,
                             metadata=meta,
                             mask_path=mask_path,
