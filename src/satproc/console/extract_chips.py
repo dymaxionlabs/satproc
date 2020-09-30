@@ -222,11 +222,13 @@ def main(args):
     _logger.info("Extract chips")
 
     if args.aoi:
+        _logger.info("Prepare AOI shape")
         aoi_poly = prepare_aoi_shape(args.aoi)
     else:
         aoi_poly = None
 
     if args.labels:
+        _logger.info("Prepare label shapes")
         polys_dict = prepare_label_shapes(args.labels,
                                           mask_type=args.mask_type,
                                           label_property=args.label_property,

@@ -162,6 +162,7 @@ def extract_chips(raster,
         if bands is None:
             bands = list(range(1, min(ds.count, 3) + 1))
 
+        _logger.info("Building windows")
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(
@@ -170,13 +171,29 @@ def extract_chips(raster,
                             ds.width,
                             ds.height,
                             whole=True))
-        chips = []
+        _logger.info("Total windows: %d", len(windows))
+
+        _logger.info("Building window shapes")
+        window_shapes = [
+            box(*rasterio.windows.bounds(w, ds.transform)) for w, _ in windows
+        ]
+        window_and_shapes = zip(windows, window_shapes)
+
+        # Filter windows by AOI shape
+        if aoi_poly:
+            _logger.info("Filtering windows by AOI")
+            window_and_shapes = [(w, s) for w, s in window_and_shapes
+                                 if s.intersects(aoi_poly)]
+            _logger.info("Total windows after filtering: %d",
+                         len(window_and_shapes))
 
         meta = ds.meta.copy()
         if crs:
             meta['crs'] = CRS.from_string(crs)
 
-        for c, (window, (i, j)) in tqdm(list(enumerate(windows))):
+        chips = []
+        for c, ((window, (i, j)),
+                win_shape) in tqdm(list(enumerate(window_and_shapes))):
             _logger.debug("%s %s", window, (i, j))
 
             img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
@@ -184,11 +201,6 @@ def extract_chips(raster,
                                      f"{basename}_{i}_{j}.{type}")
             if skip_existing and os.path.exists(img_path) and (
                     not labels or os.path.exists(mask_path)):
-                continue
-
-            chip_shape = box(*rasterio.windows.bounds(window, ds.transform))
-
-            if aoi_poly and not chip_shape.intersects(aoi_poly):
                 continue
 
             img = ds.read(window=window)
@@ -209,17 +221,16 @@ def extract_chips(raster,
                 image_was_saved = write_image(img, img_path)
 
             if image_was_saved:
-                chip = (chip_shape, (c, i, j))
+                chip = (win_shape, (c, i, j))
                 chips.append(chip)
 
                 if labels:
                     if mask_type == 'class':
                         keys = classes if classes is not None else polys_dict.keys(
                         )
-                        t = ds.transform
                         multiband_chip_mask_by_classes(
                             classes=keys,
-                            transform=t,
+                            transform=ds.transform,
                             window=window,
                             polys_dict=polys_dict,
                             metadata=meta,
