@@ -135,6 +135,7 @@ def extract_chips(raster,
                   skip_existing=True,
                   aoi_poly=None,
                   polys_dict=None,
+                  within=False,
                   *,
                   size,
                   step_size,
@@ -176,8 +177,10 @@ def extract_chips(raster,
         # Filter windows by AOI shape
         if aoi_poly:
             _logger.info("Filtering windows by AOI")
+            _logger.info("Using \"%s\" function", 'within' if within else 'intersects')
+            filter_fn = lambda w, aoi: w.within(aoi) if within else w.intersects(aoi)
             window_and_shapes = [(w, s) for w, s in window_and_shapes
-                                 if s.intersects(aoi_poly)]
+                                 if filter_fn(s, aoi_poly)]
             _logger.info("Total windows after filtering: %d",
                          len(window_and_shapes))
 

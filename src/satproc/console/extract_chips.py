@@ -66,6 +66,19 @@ def parse_args(args):
                         choices=['single', 'class', 'instance'],
                         default='class')
     parser.add_argument("--aoi", help="Filter by AOI vector file")
+    parser.add_argument(
+        "--within",
+        dest="within",
+        action="store_true",
+        help="only create chip is it is within AOI (if provided)"
+    )
+    parser.add_argument(
+        "--no-within",
+        dest="within",
+        default=False,
+        action="store_false",
+        help="create chip if it intersects with AOI (if provided)"
+    )
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
@@ -246,6 +259,7 @@ def main(args):
                       bands=bands,
                       output_dir=args.output_dir,
                       type=args.type,
+                      within=args.within,
                       write_geojson=args.write_geojson,
                       crs=args.crs,
                       labels=args.labels,
