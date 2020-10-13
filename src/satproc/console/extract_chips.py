@@ -70,15 +70,13 @@ def parse_args(args):
         "--within",
         dest="within",
         action="store_true",
-        help="only create chip is it is within AOI (if provided)"
-    )
+        help="only create chip is it is within AOI (if provided)")
     parser.add_argument(
         "--no-within",
         dest="within",
         default=False,
         action="store_false",
-        help="create chip if it intersects with AOI (if provided)"
-    )
+        help="create chip if it intersects with AOI (if provided)")
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
@@ -234,39 +232,23 @@ def main(args):
 
     _logger.info("Extract chips")
 
-    if args.aoi:
-        _logger.info("Prepare AOI shape")
-        aoi_poly = prepare_aoi_shape(args.aoi)
-    else:
-        aoi_poly = None
-
-    if args.labels:
-        _logger.info("Prepare label shapes")
-        polys_dict = prepare_label_shapes(args.labels,
-                                          mask_type=args.mask_type,
-                                          label_property=args.label_property,
-                                          classes=args.classes)
-    else:
-        polys_dict = None
-
-    for raster in tqdm(args.raster):
-        extract_chips(raster,
-                      size=args.size,
-                      step_size=args.step_size,
-                      aoi_poly=aoi_poly,
-                      rescale_mode=rescale_mode,
-                      rescale_range=rescale_range,
-                      bands=bands,
-                      output_dir=args.output_dir,
-                      type=args.type,
-                      within=args.within,
-                      write_geojson=args.write_geojson,
-                      crs=args.crs,
-                      labels=args.labels,
-                      label_property=args.label_property,
-                      classes=args.classes,
-                      mask_type=args.mask_type,
-                      polys_dict=polys_dict)
+    extract_chips(args.raster,
+                  aoi=args.aoi,
+                  labels=args.labels,
+                  label_property=args.label_property,
+                  mask_type=args.mask_type,
+                  rescale_mode=rescale_mode,
+                  rescale_range=rescale_range,
+                  bands=bands,
+                  type=args.type,
+                  within=args.within,
+                  write_geojson=args.write_geojson,
+                  classes=args.classes,
+                  crs=args.crs,
+                  skip_existing=args.skip_existing,
+                  size=args.size,
+                  step_size=args.step_size,
+                  output_dir=args.output_dir)
 
 
 def run():

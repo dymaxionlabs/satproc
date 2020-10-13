@@ -121,25 +121,78 @@ def prepare_label_shapes(labels,
         raise RuntimeError(f"mask type '{mask_type}' not supported")
 
 
-def extract_chips(raster,
+def extract_chips(rasters,
+                  aoi=None,
+                  labels=None,
+                  label_property='class',
+                  mask_type='class',
                   rescale_mode=None,
                   rescale_range=None,
                   bands=None,
                   type='tif',
                   write_geojson=False,
-                  labels=None,
-                  label_property='class',
-                  mask_type='class',
                   classes=None,
                   crs=None,
                   skip_existing=True,
-                  aoi_poly=None,
-                  polys_dict=None,
                   within=False,
                   *,
                   size,
                   step_size,
                   output_dir):
+    if aoi:
+        _logger.info("Prepare AOI shape")
+        aoi_poly = prepare_aoi_shape(aoi)
+    else:
+        aoi_poly = None
+
+    if labels:
+        _logger.info("Prepare label shapes")
+        polys_dict = prepare_label_shapes(labels,
+                                          mask_type=mask_type,
+                                          label_property=label_property,
+                                          classes=classes)
+    else:
+        polys_dict = None
+
+    for raster in tqdm(rasters):
+        extract_chips_from_raster(raster,
+                                  size=size,
+                                  step_size=step_size,
+                                  rescale_mode=rescale_mode,
+                                  rescale_range=rescale_range,
+                                  bands=bands,
+                                  output_dir=output_dir,
+                                  type=type,
+                                  within=within,
+                                  write_geojson=write_geojson,
+                                  crs=crs,
+                                  labels=labels,
+                                  label_property=label_property,
+                                  classes=classes,
+                                  mask_type=mask_type,
+                                  aoi_poly=aoi_poly,
+                                  polys_dict=polys_dict)
+
+
+def extract_chips_from_raster(raster,
+                              rescale_mode=None,
+                              rescale_range=None,
+                              bands=None,
+                              type='tif',
+                              write_geojson=False,
+                              labels=None,
+                              label_property='class',
+                              mask_type='class',
+                              classes=None,
+                              crs=None,
+                              skip_existing=True,
+                              within=False,
+                              aoi_poly=None,
+                              polys_dict=None,
+                              *,
+                              size,
+                              step_size,
+                              output_dir):
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
@@ -177,8 +230,10 @@ def extract_chips(raster,
         # Filter windows by AOI shape
         if aoi_poly:
             _logger.info("Filtering windows by AOI")
-            _logger.info("Using \"%s\" function", 'within' if within else 'intersects')
-            filter_fn = lambda w, aoi: w.within(aoi) if within else w.intersects(aoi)
+            _logger.info("Using \"%s\" function",
+                         'within' if within else 'intersects')
+            filter_fn = lambda w, aoi: w.within(
+                aoi) if within else w.intersects(aoi)
             window_and_shapes = [(w, s) for w, s in window_and_shapes
                                  if filter_fn(s, aoi_poly)]
             _logger.info("Total windows after filtering: %d",
