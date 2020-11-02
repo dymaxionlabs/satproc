@@ -77,7 +77,6 @@ def main(args):
 
     polygonize(input_dir=args.input_dir,
                output=args.output,
-               threshold=args.threshold,
                temp_dir=args.temp_dir)
 
 

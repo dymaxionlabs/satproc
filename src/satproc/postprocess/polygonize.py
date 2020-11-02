@@ -51,7 +51,7 @@ def merge_vector_files(*, input_dir, output, tmpdir):
                     quiet=False)
 
 
-def polygonize(threshold=None, temp_dir=None, *, input_dir, output):
+def polygonize(temp_dir=None, *, input_dir, output):
     images = list(glob(os.path.join(input_dir, '*.tif')))
 
     must_remove_temp_dir = False
@@ -65,7 +65,7 @@ def polygonize(threshold=None, temp_dir=None, *, input_dir, output):
         temp_dir = tmpdir.name
 
     # Process all chip images
-    worker = partial(process_image, tmpdir=temp_dir, threshold=threshold)
+    worker = partial(process_image, tmpdir=temp_dir)
     map_with_threads(images, worker)
 
     # Merge all vector files into a single one
