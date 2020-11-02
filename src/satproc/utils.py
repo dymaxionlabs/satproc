@@ -1,8 +1,12 @@
 import json
 import logging
 import math
+import multiprocessing as mp
 import os
+import subprocess
 from functools import partial
+from itertools import zip_longest
+from multiprocessing.pool import ThreadPool
 
 import numpy as np
 import pyproj
@@ -18,6 +22,13 @@ __copyright__ = "Damián Silvani"
 __license__ = "mit"
 
 _logger = logging.getLogger(__name__)
+
+
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
 
 
 def reproject_shape(shp, from_crs, to_crs):
@@ -128,3 +139,20 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
 def get_raster_band_count(path):
     with rasterio.open(path) as src:
         return src.count
+
+
+def run_command(cmd, quiet=True):
+    stderr = subprocess.DEVNULL if quiet else None
+    stdout = subprocess.DEVNULL if quiet else None
+    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)
+
+
+def map_with_threads(items, worker, num_jobs=None, total=None):
+    if not total:
+        total = len(items)
+    if not num_jobs:
+        num_jobs = mp.cpu_count()
+    with ThreadPool(num_jobs) as pool:
+        with tqdm(total=len(items)) as pbar:
+            for _ in enumerate(pool.imap_unordered(worker, items)):
+                pbar.update()
