@@ -22,3 +22,5 @@ git+git://github.com/waspinator/pycococreator.git@0.2.0
 fiona
 pyproj
 rasterio
+rtree
+scipy
