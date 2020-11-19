@@ -4,16 +4,13 @@ import math
 import multiprocessing as mp
 import os
 import subprocess
-from functools import partial
 from itertools import zip_longest
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
-import pyproj
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry import mapping
-from shapely.ops import transform
 from skimage import exposure
 from tqdm import tqdm
 
@@ -29,12 +26,6 @@ def grouper(iterable, n, fillvalue=None):
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
     args = [iter(iterable)] * n
     return zip_longest(*args, fillvalue=fillvalue)
-
-
-def reproject_shape(shp, from_crs, to_crs):
-    project = partial(pyproj.transform, pyproj.Proj(from_crs),
-                      pyproj.Proj(to_crs))
-    return transform(project, shp)
 
 
 def sliding_windows(size, step_size, width, height, whole=False):
@@ -115,16 +106,19 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
 
     with open(output_path, "w") as f:
         d = {"type": "FeatureCollection", "features": []}
+        if crs != 'epsg:4326':
+            code = crs.split(':')[1]
+            d["crs"] = {
+                "type": "name",
+                "properties": {
+                    "name": f"urn:ogc:def:crs:EPSG::{code}"
+                }
+            }
         for i, (chip, (_fi, xi, yi)) in enumerate(chip_pairs):
-            # Shapes will be stored in EPSG:4326 projection
-            if crs != "epsg:4326":
-                chip_wgs = reproject_shape(chip, crs, "epsg:4326")
-            else:
-                chip_wgs = chip
             filename = f"{basename}_{xi}_{yi}.{type}"
             feature = {
                 "type": "Feature",
-                "geometry": mapping(chip_wgs),
+                "geometry": mapping(chip),
                 "properties": {
                     "id": i,
                     "x": xi,
