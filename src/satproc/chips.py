@@ -171,7 +171,8 @@ def extract_chips(rasters,
                                   classes=classes,
                                   mask_type=mask_type,
                                   aoi_poly=aoi_poly,
-                                  polys_dict=polys_dict)
+                                  polys_dict=polys_dict,
+                                  skip_existing=skip_existing)
 
 
 def extract_chips_from_raster(raster,
@@ -193,6 +194,9 @@ def extract_chips_from_raster(raster,
                               size,
                               step_size,
                               output_dir):
+
+    if skip_existing:
+        _logger.info("Will skip existing files")
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
@@ -294,6 +298,7 @@ def extract_chips_from_raster(raster,
         if write_geojson:
             geojson_path = os.path.join(output_dir,
                                         "{}.geojson".format(basename))
+            _logger.info("Write chips geojson at %s", geojson_path)
             write_chips_geojson(geojson_path,
                                 chips,
                                 type=type,
