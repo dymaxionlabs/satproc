@@ -87,7 +87,11 @@ def classify_polygons(labels, label_property, classes):
         for block in blocks:
             if label_property in block['properties']:
                 c = block['properties'][label_property]
-                geom = shape(block['geometry'])
+                try:
+                    geom = shape(block['geometry'])
+                except:
+                    _logger.warning("Failed to get geometry shape for feature: %s", block)
+                    continue
                 if c in polys_dict:
                     polys_dict[c].append(geom)
                 else:
