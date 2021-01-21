@@ -34,10 +34,11 @@ def parse_args(args):
     parser.add_argument("-o", "--output", help="output in GPKG format")
     parser.add_argument("--temp-dir", help="temporary directory")
 
-    parser.add_argument("--tile-size",
+    parser.add_argument("-T",
+                        "--tile-size",
                         type=int,
-                        default=512,
-                        help="polygonization tile size")
+                        default=None,
+                        help="retile input files with specific tile size")
 
     parser.add_argument("--version",
                         action="version",

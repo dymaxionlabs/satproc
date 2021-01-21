@@ -66,7 +66,7 @@ def retile(raster, output_dir, tile_size):
         f'-targetDir {output_dir} {raster}')
 
 
-def polygonize(temp_dir=None, tile_size=1024, *, input_files, output):
+def polygonize(temp_dir=None, tile_size=None, *, input_files, output):
     tmpdir = None
     if temp_dir:
         # Make sure directory exists
@@ -76,11 +76,13 @@ def polygonize(temp_dir=None, tile_size=1024, *, input_files, output):
         tmpdir = tempfile.TemporaryDirectory()
         temp_dir = tmpdir.name
 
-    # Make sure we deal with only rasters of size no larger than `tile_size`,
-    # by *retiling* all input rasters.
-    tile_files = retile_all(input_files,
-                            tile_size=tile_size,
-                            temp_dir=temp_dir)
+    tile_files = input_files
+    if tile_size:
+        # If tile_size was provided, make sure we deal with only rasters of size
+        # no larger than `tile_size`, by *retiling* all input rasters.
+        tile_files = retile_all(input_files,
+                                tile_size=tile_size,
+                                temp_dir=temp_dir)
 
     # Process all tile images
     worker = partial(process_image, temp_dir=temp_dir)
