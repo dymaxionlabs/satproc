@@ -20,7 +20,7 @@ numpy
 git+git://github.com/waspinator/coco.git@2.1.0
 git+git://github.com/waspinator/pycococreator.git@0.2.0
 fiona
-pyproj
+pyproj==1.9.6
 rasterio
 rtree
 scipy
