@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 import argparse
 import logging
+import os
 import sys
+from glob import glob
 
 from satproc import __version__
 from satproc.postprocess.polygonize import polygonize
 from tqdm import tqdm
 
 __author__ = "Damián Silvani"
-__copyright__ = "Damián Silvani"
-__license__ = "mit"
+__copyright__ = "Dymaxion Labs"
 
 _logger = logging.getLogger(__name__)
 
@@ -24,12 +25,19 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Polygonize results into a single vector file",
+        description="Polygonize raster images into a single vector file",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("input_dir", help="results directory")
+    parser.add_argument("input_image", nargs="+", help="input raster")
+    parser.add_argument("--input-dir",
+                        help="directory containing input rasters")
     parser.add_argument("-o", "--output", help="output in GPKG format")
     parser.add_argument("--temp-dir", help="temporary directory")
+
+    parser.add_argument("--tile-size",
+                        type=int,
+                        default=512,
+                        help="polygonization tile size")
 
     parser.add_argument("--version",
                         action="version",
@@ -75,9 +83,23 @@ def main(args):
     args, parser = parse_args(args)
     setup_logging(args.loglevel)
 
-    polygonize(input_dir=args.input_dir,
+    input_files = []
+    if args.input_image:
+        input_files.extend(args.input_image)
+    if args.input_dir:
+        files = list(glob(os.path.join(args.input_dir, '*.tif')))
+        input_files.extend(files)
+
+    if not input_files:
+        raise RuntimeError(
+            "no input files found (you should pass individual input_image paths, or use --input-dir"
+        )
+    _logger.info("Num. input files: %d", len(input_files))
+
+    polygonize(input_files=input_files,
                output=args.output,
-               temp_dir=args.temp_dir)
+               temp_dir=args.temp_dir,
+               tile_size=args.tile_size)
 
 
 def run():
