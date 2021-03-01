@@ -28,7 +28,7 @@ def parse_args(args):
         description="Polygonize raster images into a single vector file",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("input_image", nargs="+", help="input raster")
+    parser.add_argument("input_image", nargs="*", help="input raster")
     parser.add_argument("--input-dir",
                         help="directory containing input rasters")
     parser.add_argument("-o", "--output", help="output in GPKG format")
