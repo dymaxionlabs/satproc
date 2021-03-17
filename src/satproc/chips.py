@@ -364,6 +364,7 @@ def write_tif(img, path, *, window, meta, transform, bands):
     meta.update(
         {
             "driver": "GTiff",
+            "dtype": img.dtype,
             "height": window.height,
             "width": window.width,
             "transform": rasterio.windows.transform(window, transform),
