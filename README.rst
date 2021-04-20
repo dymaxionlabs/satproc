@@ -2,18 +2,25 @@
 satproc
 =======
 
-
-Add a short description here!
-
+Python library and CLI tools for processing geospatial imagery for ML
 
 Description
 ===========
 
-A longer description of your project goes here...
+satproc helps you work with large amount of geospatial raster images
+(satellite, drone, etc.) and process them for training machine learning, for
+object detection or semantic segmentation problems.
 
+Contributing
+============
 
-Note
-====
+Bug reports and pull requests are welcome on GitHub at the [issues
+page](https://github.com/dymaxionlabs/satproc). This project is intended to be
+a safe, welcoming space for collaboration, and contributors are expected to
+adhere to the [Contributor Covenant](http://contributor-covenant.org) code of
+conduct.
 
-This project has been set up using PyScaffold 3.2.3. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
+License
+=======
+
+This project is licensed under Apache 2.0. Refer to [LICENSE.txt](LICENSE.txt).
