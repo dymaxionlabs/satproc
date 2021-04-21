@@ -15,8 +15,8 @@ from skimage import exposure
 from tqdm import tqdm
 
 __author__ = "Damián Silvani"
-__copyright__ = "Damián Silvani"
-__license__ = "mit"
+__copyright__ = "Dymaxion Labs"
+__license__ = "Apache-2.0"
 
 _logger = logging.getLogger(__name__)
 
