@@ -1,6 +1,4 @@
-============
-Contributors
-============
+# Contributors
 
 * Damián Silvani <damian@dymaxionlabs.com>
 * María Roberta Devesa <ro.devesa@dymaxionlabs.com>
