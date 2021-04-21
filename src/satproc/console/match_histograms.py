@@ -12,7 +12,6 @@ import argparse
 import logging
 import sys
 
-from satproc import __version__
 from satproc.histogram import match_histograms
 
 __author__ = "Damián Silvani"
@@ -33,14 +32,12 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Match histograms between images",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument("src", help="input raster")
     parser.add_argument("dst", help="output raster")
-    parser.add_argument("-r",
-                        "--reference",
-                        required=True,
-                        help="reference raster")
+    parser.add_argument("-r", "--reference", required=True, help="reference raster")
 
     parser.add_argument(
         "-v",
@@ -68,10 +65,9 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel,
-                        stream=sys.stdout,
-                        format=logformat,
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 
 def main(args):
@@ -91,8 +87,7 @@ def main(args):
 
 
 def run():
-    """Entry point for console_scripts
-    """
+    """Entry point for console_scripts"""
     main(sys.argv[1:])
 
 

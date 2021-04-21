@@ -44,9 +44,9 @@ def sliding_windows(size, step_size, width, height, whole=False):
 def rescale_intensity(image, rescale_mode, rescale_range):
     """Calculate percentiles from a range cut and rescale intensity of image"""
 
-    if rescale_mode == 'percentiles':
+    if rescale_mode == "percentiles":
         in_range = tuple(np.percentile(image, rescale_range))
-    elif rescale_mode == 'values':
+    elif rescale_mode == "values":
         min_value, max_value = rescale_range
         if not min_value:
             min_value = np.min(image)
@@ -54,9 +54,9 @@ def rescale_intensity(image, rescale_mode, rescale_range):
             max_value = np.max(image)
         in_range = (min_value, max_value)
 
-    return exposure.rescale_intensity(image,
-                                      in_range=in_range,
-                                      out_range=(0, 255)).astype(np.uint8)
+    return exposure.rescale_intensity(
+        image, in_range=in_range, out_range=(0, 255)
+    ).astype(np.uint8)
 
 
 def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
@@ -66,8 +66,9 @@ def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
     with rasterio.open(raster) as ds:
         windows = list(sliding_windows(size, size, ds.width, ds.height))
         window_sample_size = math.ceil(sample_size / len(windows))
-        _logger.info("Windows: %d, windows sample size: %d", len(windows),
-                     window_sample_size)
+        _logger.info(
+            "Windows: %d, windows sample size: %d", len(windows), window_sample_size
+        )
         totals_per_bands = [[] for _ in range(ds.count)]
         for window, _ in tqdm(windows):
             img = ds.read(window=window)
@@ -76,9 +77,8 @@ def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
             for i in range(img.shape[0]):
                 values = img[i].flatten()
                 window_sample.append(
-                    np.random.choice(values,
-                                     size=window_sample_size,
-                                     replace=False))
+                    np.random.choice(values, size=window_sample_size, replace=False)
+                )
             for i, win in enumerate(window_sample):
                 totals_per_bands[i].append(win)
 
@@ -89,8 +89,8 @@ def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
         _logger.info("Total shape: %s", totals.shape)
 
         res = tuple(
-            tuple(p)
-            for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T)
+            tuple(p) for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T
+        )
         _logger.info("Percentiles: %s", res)
 
         return res
@@ -106,25 +106,18 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
 
     with open(output_path, "w") as f:
         d = {"type": "FeatureCollection", "features": []}
-        if crs != 'epsg:4326':
-            code = crs.split(':')[1]
+        if crs != "epsg:4326":
+            code = crs.split(":")[1]
             d["crs"] = {
                 "type": "name",
-                "properties": {
-                    "name": f"urn:ogc:def:crs:EPSG::{code}"
-                }
+                "properties": {"name": f"urn:ogc:def:crs:EPSG::{code}"},
             }
         for i, (chip, (_fi, xi, yi)) in enumerate(chip_pairs):
             filename = f"{basename}_{xi}_{yi}.{type}"
             feature = {
                 "type": "Feature",
                 "geometry": mapping(chip),
-                "properties": {
-                    "id": i,
-                    "x": xi,
-                    "y": yi,
-                    "filename": filename
-                },
+                "properties": {"id": i, "x": xi, "y": yi, "filename": filename},
             }
             d["features"].append(feature)
         f.write(json.dumps(d))

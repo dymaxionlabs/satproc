@@ -16,8 +16,8 @@ Note: This skeleton file can be safely removed if not needed!
 """
 
 import argparse
-import sys
 import logging
+import sys
 
 from satproc import __version__
 from satproc.scale import scale
@@ -40,19 +40,19 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Min-max scale a raster",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument("--version",
-                        action="version",
-                        version="satproc_scale {ver}".format(ver=__version__))
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="satproc_scale {ver}".format(ver=__version__),
+    )
 
     parser.add_argument("input", help="input raster file")
     parser.add_argument("output", help="output raster file")
 
-    parser.add_argument("--window-size",
-                        help="window size",
-                        type=int,
-                        default=1024)
+    parser.add_argument("--window-size", help="window size", type=int, default=1024)
 
     parser.add_argument(
         "-v",
@@ -81,10 +81,9 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel,
-                        stream=sys.stdout,
-                        format=logformat,
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 
 def main(args):
@@ -100,8 +99,7 @@ def main(args):
 
 
 def run():
-    """Entry point for console_scripts
-    """
+    """Entry point for console_scripts"""
     main(sys.argv[1:])
 
 

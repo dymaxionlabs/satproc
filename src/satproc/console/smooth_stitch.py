@@ -5,7 +5,6 @@ import sys
 
 from satproc import __version__
 from satproc.postprocess.smooth import smooth_stitch
-from tqdm import tqdm
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -25,15 +24,16 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Stitch overlapping chips with spline interpolation",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument("input_dir", help="results directory")
     parser.add_argument("-o", "--output-dir", help="output directory")
     # parser.add_argument("--temp-dir", help="temporary directory")
 
-    parser.add_argument("--version",
-                        action="version",
-                        version="satproc {ver}".format(ver=__version__))
+    parser.add_argument(
+        "--version", action="version", version="satproc {ver}".format(ver=__version__)
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -60,10 +60,9 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel,
-                        stream=sys.stdout,
-                        format=logformat,
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 
 def main(args):
@@ -79,8 +78,7 @@ def main(args):
 
 
 def run():
-    """Entry point for console_scripts
-    """
+    """Entry point for console_scripts"""
     main(sys.argv[1:])
 
 

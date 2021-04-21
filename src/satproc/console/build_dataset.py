@@ -19,7 +19,6 @@ import argparse
 import logging
 import sys
 
-from satproc import __version__
 from satproc.build_dataset import build_dataset
 
 __author__ = "Damián Silvani"
@@ -40,41 +39,41 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Create dataset from a raster file",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    parser.add_argument("raster", nargs='+', help="input raster file")
+    parser.add_argument("raster", nargs="+", help="input raster file")
     parser.add_argument("dataset", help="input shape or geojson file")
-    parser.add_argument("--size",
-                        type=int,
-                        default=512,
-                        help="size of image tiles, in pixels")
-    parser.add_argument("--step-size",
-                        type=int,
-                        default=128,
-                        help="step size (i.e. stride), in pixels")
+    parser.add_argument(
+        "--size", type=int, default=512, help="size of image tiles, in pixels"
+    )
+    parser.add_argument(
+        "--step-size", type=int, default=128, help="step size (i.e. stride), in pixels"
+    )
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
         "--instance",
         type=bool,
-        help=
-        "generate a mask from each polygon if true, else a single mask for each chip",
-        default=False)
-    parser.add_argument("--type",
-                        type=str,
-                        help="dataset output type ['COCO', 'Retinanet']",
-                        default='COCO')
+        help="generate a mask from each polygon if true, "
+        "else a single mask for each chip",
+        default=False,
+    )
+    parser.add_argument(
+        "--type",
+        type=str,
+        help="dataset output type ['COCO', 'Retinanet']",
+        default="COCO",
+    )
 
-    parser.add_argument("--label",
-                        type=str,
-                        help="annotation label for retinanet dataset",
-                        default='unknown')
+    parser.add_argument(
+        "--label",
+        type=str,
+        help="annotation label for retinanet dataset",
+        default="unknown",
+    )
 
-    parser.add_argument("-b",
-                        "--bands",
-                        nargs="+",
-                        type=int,
-                        help="RGB band indexes")
+    parser.add_argument("-b", "--bands", nargs="+", type=int, help="RGB band indexes")
 
     parser.add_argument(
         "--rescale",
@@ -89,34 +88,38 @@ def parse_args(args):
         action="store_false",
         help="do not rescale intensity",
     )
-    parser.add_argument("--rescale-mode",
-                        default="percentiles",
-                        choices=["percentiles", "values"],
-                        help="choose mode of intensity rescaling")
+    parser.add_argument(
+        "--rescale-mode",
+        default="percentiles",
+        choices=["percentiles", "values"],
+        help="choose mode of intensity rescaling",
+    )
 
     parser.add_argument(
         "--lower-cut",
         type=float,
         default=2,
-        help=
-        "(for 'percentiles' mode) lower cut of percentiles for cumulative count in intensity rescaling",
+        help="(for 'percentiles' mode) lower cut of percentiles "
+        "for cumulative count in intensity rescaling",
     )
     parser.add_argument(
         "--upper-cut",
         type=float,
         default=98,
-        help=
-        "(for 'percentiles' mode) upper cut of percentiles for cumulative count in intensity rescaling",
+        help="(for 'percentiles' mode) upper cut of percentiles "
+        "for cumulative count in intensity rescaling",
     )
 
     parser.add_argument(
-        '--min',
+        "--min",
         type=float,
-        help="(for 'values' mode) minimum value in intensity rescaling")
+        help="(for 'values' mode) minimum value in intensity rescaling",
+    )
     parser.add_argument(
-        '--max',
+        "--max",
         type=float,
-        help="(for 'values' mode) maximum value in intensity rescaling")
+        help="(for 'values' mode) maximum value in intensity rescaling",
+    )
 
     parser.add_argument(
         "-v",
@@ -144,10 +147,9 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel,
-                        stream=sys.stdout,
-                        format=logformat,
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
 
 def main(args):
@@ -162,10 +164,10 @@ def main(args):
     bands = [1, 2, 3] if not args.bands else args.bands
 
     rescale_mode = args.rescale_mode if args.rescale else None
-    if rescale_mode == 'percentiles':
+    if rescale_mode == "percentiles":
         rescale_range = (args.lower_cut, args.upper_cut)
         _logger.info("Rescale intensity with percentiles %s", rescale_range)
-    elif rescale_mode == 'values':
+    elif rescale_mode == "values":
         rescale_range = (args.min, args.max)
         _logger.info("Rescale intensity with values %s", rescale_range)
     else:
@@ -189,8 +191,7 @@ def main(args):
 
 
 def run():
-    """Entry point for console_scripts
-    """
+    """Entry point for console_scripts"""
     main(sys.argv[1:])
 
 
