@@ -14,6 +14,21 @@ _logger = logging.getLogger(__name__)
 
 
 def get_min_max(img, window_size=512):
+    """Return minimum and maximum values on array, in blocks
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        image array
+    window_size : int
+        size of window (default: 512)
+
+    Returns
+    -------
+    Tuple[float, float]
+        minimum and maximum values
+
+    """
     mins, maxs = [], []
     with rasterio.open(img) as src:
         win_size = (window_size, window_size)
@@ -28,7 +43,24 @@ def get_min_max(img, window_size=512):
 
 
 def minmax_scale(img, *, min_values, max_values):
-    """Scale bands of +img+ separately, to range 0-1"""
+    """
+    Scale bands of image separately, to range 0..1
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        image array
+    min_values : List[float]
+        minimum values for each band
+    max_values : List[float]
+        maximum values for each band
+
+    Returns
+    -------
+    numpy.ndarray
+        rescaled image
+
+    """
     n_bands = img.shape[0]
     return np.array(
         [
@@ -39,7 +71,23 @@ def minmax_scale(img, *, min_values, max_values):
 
 
 def scale(input_img, output_img, window_size=512):
-    """Scale all bands of +input_img+ separately and save to +output_img+"""
+    """
+    Read a raster, rescale each band with min-max values, and save as another raster
+
+    Parameters
+    ----------
+    input_img : str
+        path to input image
+    output_img : str
+        path to output image
+    window_size : int
+        size of window
+
+    Returns
+    -------
+    None
+
+    """
     min_values, max_values = get_min_max(input_img, window_size=window_size)
 
     with rasterio.open(input_img) as src:

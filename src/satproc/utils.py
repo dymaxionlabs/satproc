@@ -29,7 +29,27 @@ def grouper(iterable, n, fillvalue=None):
 
 
 def sliding_windows(size, step_size, width, height, whole=False):
-    """Slide a window of +size+ by moving it +step_size+ pixels"""
+    """Slide a window of +size+ by moving it +step_size+ pixels
+
+    Parameters
+    ----------
+    size : int
+        window size, in pixels
+    step_size : int
+        step or *stride* size when sliding window, in pixels
+    width : int
+        image width
+    height : int
+        image height
+    whole : bool (default: False)
+        whether to generate only whole chips, or clip them at borders if needed
+
+    Yields
+    ------
+    Tuple[Window, Tuple[int, int]]
+        a pair of Window and a pair of position (i, j)
+
+    """
     w, h = size
     sw, sh = step_size
     end_i = height - h if whole else height
@@ -42,7 +62,24 @@ def sliding_windows(size, step_size, width, height, whole=False):
 
 
 def rescale_intensity(image, rescale_mode, rescale_range):
-    """Calculate percentiles from a range cut and rescale intensity of image"""
+    """
+    Calculate percentiles from a range cut and
+    rescale intensity of image to byte range
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        image array
+    rescale_mode : str
+        rescaling mode, either 'percentiles' or 'values'
+    rescale_range : Tuple[number, number]
+        input range for rescaling
+
+    Returns
+    -------
+    numpy.ndarray
+        rescaled image
+    """
 
     if rescale_mode == "percentiles":
         in_range = tuple(np.percentile(image, rescale_range))
@@ -59,7 +96,35 @@ def rescale_intensity(image, rescale_mode, rescale_range):
     ).astype(np.uint8)
 
 
-def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
+def calculate_raster_percentiles(
+    raster, lower_cut=2, upper_cut=98, sample_size=5000, block_size=2048
+):
+    """Estimate raster percentiles in blocks
+
+    This method tiles raster image in blocks, samples block
+    and calculates percentiles on all samples.
+
+    Useful for large images that don't fit memory.
+
+    Parameters
+    ----------
+    raster : str
+        path to raster image
+    lower_cut : float
+        lower cut percentile (default: 2)
+    upper_cut : float
+        upper cut percentile (default: 98)
+    sample_size : int
+        how many samples to take for each block (default: 5000)
+    block_size : int
+        size of square block (default: 2048)
+
+    Returns
+    -------
+    Tuple[float, float]
+        raster percentiles
+
+    """
     sample_size = 5000
     size = (2048, 2048)
 
@@ -97,6 +162,26 @@ def calculate_raster_percentiles(raster, lower_cut=2, upper_cut=98):
 
 
 def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
+    """Write a GeoJSON containing chips polygons as features
+
+    Parameters
+    ----------
+    output_path : str
+        GeoJSON output path
+    chip_pairs : Tuple[Shape, Tuple[int, int, int]]
+        a pair with the chip polygon geometry, and a tuple of (feature id, x, y)
+    type : str
+        chip file type extension (e.g. tif, jpg)
+    crs : str
+        CRS epsg code of chip polygon geometry
+    basename : str
+        basename of chip files
+
+    Returns
+    -------
+    None
+
+    """
     if not chip_pairs:
         _logger.warn("No chips to save")
         return
@@ -124,6 +209,19 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
 
 
 def get_raster_band_count(path):
+    """Get raster band count
+
+    Parameters
+    ----------
+    path : str
+        path of the raster image
+
+    Returns
+    -------
+    int
+        band count
+
+    """
     with rasterio.open(path) as src:
         return src.count
 
@@ -135,6 +233,24 @@ def run_command(cmd, quiet=True):
 
 
 def map_with_threads(items, worker, num_jobs=None, total=None):
+    """Map a worker function to an iterable of items, using a thread pool
+
+    Parameters
+    ----------
+    items : iterable
+        items to map
+    worker : Function
+        worker function to apply to each item
+    num_jobs : int
+        number of threads to use
+    total : int (optional)
+        total number of items (for the progress bar)
+
+    Returns
+    -------
+    None
+
+    """
     if not total:
         total = len(items)
     if not num_jobs:
