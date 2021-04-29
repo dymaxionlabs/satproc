@@ -97,7 +97,7 @@ def parse_args(args):
     parser.add_argument(
         "--rescale-mode",
         default="percentiles",
-        choices=["percentiles", "values"],
+        choices=["percentiles", "values", "s2_rgb_extra"],
         help="choose mode of intensity rescaling",
     )
 
@@ -232,6 +232,13 @@ def main(args):
     elif rescale_mode == "values":
         rescale_range = (args.min, args.max)
         _logger.info("Rescale intensity with values %s", rescale_range)
+    elif rescale_mode == "s2_rgb_extra":
+        rescale_range = (args.lower_cut, args.upper_cut)
+        _logger.info(
+            "Rescale intensity of first 3 bands (RGB) to (0, 0.3) "
+            "and the rest of the bands with percentiles %s",
+            rescale_range,
+        )
     else:
         rescale_range = None
         _logger.info("No rescale intensity")

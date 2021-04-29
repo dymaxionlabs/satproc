@@ -90,8 +90,18 @@ def rescale_intensity(image, rescale_mode, rescale_range):
         if not max_value:
             max_value = np.max(image)
         in_range = (min_value, max_value)
+    elif rescale_mode == "s2_rgb_extra":
+        in_range = tuple(np.percentile(image, rescale_range))
+        # Override first 3 ranges for (0, 0.3) (Sentinel-2 L2A TCI range)
+        in_range[0] = (0, 0.3)
+        in_range[1] = (0, 0.3)
+        in_range[2] = (0, 0.3)
     else:
         raise RuntimeError(f"unknown rescale_mode {rescale_mode}")
+
+    # return exposure.rescale_intensity(
+    #     image, in_range=in_range, out_range=(0, 255)
+    # ).astype(np.uint8)
 
     return np.array(
         [
