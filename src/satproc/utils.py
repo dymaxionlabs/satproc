@@ -227,6 +227,20 @@ def get_raster_band_count(path):
 
 
 def run_command(cmd, quiet=True):
+    """Run a shell command
+
+    Parameters
+    ----------
+    cmd : str
+        command to run
+    quiet : bool (default: True)
+        silent output (stdout and sterr)
+
+    Returns
+    -------
+    None
+
+    """
     stderr = subprocess.DEVNULL if quiet else None
     stdout = subprocess.DEVNULL if quiet else None
     subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)

@@ -23,6 +23,18 @@ _logger = logging.getLogger(__name__)
 
 
 def get_shape(feature):
+    """Get shape geometry from feature
+
+    Parameters
+    ----------
+    feature : dict
+        Feature as read from Fiona
+
+    Returns
+    -------
+    shapely.geometry.BaseGeometry
+
+    """
     geom = feature["geometry"]
     try:
         return shape(geom)
@@ -32,6 +44,22 @@ def get_shape(feature):
 
 
 def mask_from_polygons(polygons, *, win, t):
+    """Generate a binary mask array from a set of polygon
+
+    Parameters
+    ----------
+    polygons : List[Union[Polygon, MultiPolygon]]
+        list of polygon or multipolygon geometries
+    win : rasterio.windows.Window
+        window
+    t : rasterio.transform.Affine
+        affine transform
+
+    Returns
+    -------
+    numpy.ndarray
+
+    """
     transform = rasterio.windows.transform(win, t)
     if polygons is None or len(polygons) == 0:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
