@@ -90,10 +90,17 @@ def rescale_intensity(image, rescale_mode, rescale_range):
         if not max_value:
             max_value = np.max(image)
         in_range = (min_value, max_value)
+    else:
+        raise RuntimeError(f"unknown rescale_mode {rescale_mode}")
 
-    return exposure.rescale_intensity(
-        image, in_range=in_range, out_range=(0, 255)
-    ).astype(np.uint8)
+    return np.array(
+        [
+            exposure.rescale_intensity(
+                image[i, :, :], in_range=in_range[i], out_range=(1, 255)
+            ).astype(np.uint8)
+            for i in range(image.shape[0])
+        ]
+    )
 
 
 def calculate_raster_percentiles(
