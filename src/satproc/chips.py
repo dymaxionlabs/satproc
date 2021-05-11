@@ -286,6 +286,9 @@ def extract_chips_from_raster(
         meta = ds.meta.copy()
         if crs:
             meta["crs"] = CRS.from_string(crs)
+        if rescale_mode:
+            # If rescaling, set nodata=0 (will rescale to uint8 1-255)
+            meta["nodata"] = 0
 
         chips = []
         for c, ((window, (i, j)), win_shape) in tqdm(
