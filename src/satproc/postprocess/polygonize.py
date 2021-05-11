@@ -64,32 +64,29 @@ def retile(raster, output_dir, tile_size):
     run_command('gdal_retile.py ' \
         f'-ps {tile_size} {tile_size} ' \
         f'-targetDir {output_dir} {raster}')
+    
+def polygonize(threshold=None, temp_dir=None, *, input_dir, output):
+    images = list(glob(os.path.join(input_dir, '*.tif')))
 
-
-def polygonize(temp_dir=None, tile_size=None, *, input_files, output):
-    tmpdir = None
+    must_remove_temp_dir = False
     if temp_dir:
         # Make sure directory exists
         os.makedirs(temp_dir, exist_ok=True)
     else:
         # Create a temporary directory if user did not provide one
+        must_remove_temp_dir = True
         tmpdir = tempfile.TemporaryDirectory()
         temp_dir = tmpdir.name
 
-    tile_files = input_files
-    if tile_size:
-        # If tile_size was provided, make sure we deal with only rasters of size
-        # no larger than `tile_size`, by *retiling* all input rasters.
-        tile_files = retile_all(input_files,
-                                tile_size=tile_size,
-                                temp_dir=temp_dir)
-
-    # Process all tile images
-    worker = partial(process_image, temp_dir=temp_dir)
-    map_with_threads(tile_files, worker)
+    # Process all chip images
+    worker = partial(process_image, tmpdir=temp_dir, threshold=threshold)
+    map_with_threads(images, worker)
 
     # Merge all vector files into a single one
-    merge_vector_files(input_dir=temp_dir, output=output, temp_dir=temp_dir)
+    merge_vector_files(input_dir=temp_dir, output=output, tmpdir=temp_dir)
 
-    if tmpdir:
+    if must_remove_temp_dir:
         tmpdir.cleanup()
+
+
+
