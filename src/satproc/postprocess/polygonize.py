@@ -55,7 +55,7 @@ def merge_vector_files(*, input_dir, output, tmpdir):
         srcs = [f for f in srcs if f]
         output = os.path.join(groups_dir, f'{i}.gpkg')
         run_command(
-            f'ogrmerge.py -overwrite_ds -single -a_srs epsg:5382 '
+            f'ogrmerge.py -overwrite_ds -single '
             f'-f GPKG -o {output} {" ".join(srcs)}',
             quiet=False)
         return output
