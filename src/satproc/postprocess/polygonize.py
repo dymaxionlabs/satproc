@@ -14,40 +14,64 @@ _logger = logging.getLogger(__name__)
 def gdal_polygonize(src, dst):
     run_command(f"gdal_polygonize.py {src} {dst}")
 
+def apply_threshold(src, dst, *, threshold):
+    """
+    Output source values (probabilities) instead of simply a binary mask
 
-def process_image(image, *, temp_dir):
+    Make sure nodata=0, so that gdal_polygonize step ignores pixels under
+    threshold.
+
+    """
+    # Rescale to 255
+    threshold = threshold * 255
+
+    run_command('gdal_calc.py '
+                f'--calc "(A >= {threshold}) * A" '
+                f'-A {src} '
+                '--NoDataValue 0 '
+                f'--outfile {dst}')
+    
+
+def process_image(image, *, tmpdir, threshold):
     src = image
+    if threshold:
+        src = os.path.join(tmpdir, os.path.basename(image))
+        apply_threshold(src=image, dst=src, threshold=threshold)
     name, _ = os.path.splitext(os.path.basename(image))
-    dst = os.path.join(temp_dir, f"{name}.gpkg")
+    dst = os.path.join(tmpdir, f'{name}.gpkg')
     gdal_polygonize(src, dst)
 
 
-def merge_vector_files(*, input_dir, output, temp_dir):
-    srcs = list(glob(os.path.join(input_dir, "*.gpkg")))
+
+
+def merge_vector_files(*, input_dir, output, tmpdir):
+    srcs = list(glob(os.path.join(input_dir, '*.gpkg')))
     src_groups = list(enumerate(grouper(srcs, n=1000)))
-    groups_dir = os.path.join(temp_dir, "_groups")
+    groups_dir = os.path.join(tmpdir, 'groups')
     os.makedirs(groups_dir, exist_ok=True)
 
     def merge_chip_vector_files(enumerated_srcs, *, output_dir):
         i, srcs = enumerated_srcs
         srcs = [f for f in srcs if f]
-        output = os.path.join(groups_dir, f"{i}.gpkg")
+        output = os.path.join(groups_dir, f'{i}.gpkg')
         run_command(
-            f"ogrmerge.py -overwrite_ds -single "
+            f'ogrmerge.py -overwrite_ds -single -a_srs epsg:5382 '
             f'-f GPKG -o {output} {" ".join(srcs)}',
-            quiet=False,
-        )
+            quiet=False)
         return output
 
     # First, merge groups of vector files using ogrmerge.py in parallel
-    output_dir = os.path.join(temp_dir, "_merge")
+    output_dir = os.path.join(tmpdir, 'temp')
     worker = partial(merge_chip_vector_files, output_dir=output_dir)
     map_with_threads(src_groups, worker)
 
     # Second, merge ogrmerge results using ogr2ogr into a single file
-    group_paths = glob(os.path.join(groups_dir, "*.gpkg"))
+    group_paths = glob(os.path.join(groups_dir, '*.gpkg'))
+    os.makedirs(os.path.dirname(output), exist_ok=True)
     for src in tqdm(group_paths):
-        run_command(f"ogr2ogr -f GPKG -update -append {output} {src}", quiet=False)
+        run_command(f'ogr2ogr -f GPKG -update -append {output} {src}',
+                    quiet=False)
+
 
 
 def retile_all(input_files, tile_size, temp_dir):
