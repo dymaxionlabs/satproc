@@ -4,7 +4,7 @@ import rasterio
 from functools import partial
 from glob import glob
 
-from satproc.utils import map_with_processes
+from satproc.utils import map_with_threads # map_with_processes
 
 
 def get_max_prob(p):
