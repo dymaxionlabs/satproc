@@ -247,7 +247,7 @@ def extract_chips_from_raster(
         if any(b > ds.count for b in bands):
             raise RuntimeError(
                 f"Raster has {ds.count} bands, "
-                "but you asked to use {bands} band indexes"
+                f"but you asked to use {bands} band indexes"
             )
 
         if bands is None:
