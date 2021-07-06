@@ -93,9 +93,15 @@ def rescale_intensity(image, rescale_mode, rescale_range):
     elif rescale_mode == "s2_rgb_extra":
         in_range = tuple(np.percentile(image, rescale_range))
         # Override first 3 ranges for (0, 0.3) (Sentinel-2 L2A TCI range)
-        in_range[0] = (0, 0.3)
-        in_range[1] = (0, 0.3)
-        in_range[2] = (0, 0.3)
+        lst_tmp=list(in_range)
+        lst_tmp[0] = (0)
+        lst_tmp[1] = (0.3)
+        lst_tmp[2] = (0)
+        lst_tmp[3] = (0.3)
+        lst_tmp[4] = (0)
+        lst_tmp[5] = (0.3)
+        in_range=tuple(lst_tmp)
+        
     else:
         raise RuntimeError(f"unknown rescale_mode {rescale_mode}")
 
