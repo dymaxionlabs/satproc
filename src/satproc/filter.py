@@ -25,7 +25,7 @@ def filter_by_max_prob(input_dir, output_dir, threshold):
     threshold = round(threshold * 255)
     files = glob(os.path.join(input_dir, '*'))
     worker = partial(filter_chip, output_dir=output_dir, threshold=threshold)
-    map_with_processes(files, worker)
+    map_with_threads(files, worker)
 
 
 if __name__ == "__main__":
