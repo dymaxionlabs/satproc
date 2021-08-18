@@ -26,7 +26,7 @@ def apply_threshold(src, dst, *, threshold):
     threshold = threshold * 255
 
     run_command('gdal_calc.py '
-                f'--calc "(A >= {threshold}) * A" '
+                f'--calc "(A >= {threshold})*100" '
                 f'-A {src} '
                 '--NoDataValue 0 '
                 f'--outfile {dst}')
