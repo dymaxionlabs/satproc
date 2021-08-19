@@ -7,7 +7,6 @@ from glob import glob
 
 from satproc import __version__
 from satproc.postprocess.polygonize import polygonize
-from tqdm import tqdm
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -26,23 +25,41 @@ def parse_args(args):
     """
     parser = argparse.ArgumentParser(
         description="Polygonize raster images into a single vector file",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
     parser.add_argument("input_image", nargs="*", help="input raster")
-    parser.add_argument("--input-dir",
-                        help="directory containing input rasters")
+    parser.add_argument("--input-dir", help="directory containing input rasters")
     parser.add_argument("-o", "--output", help="output in GPKG format")
     parser.add_argument("--temp-dir", help="temporary directory")
 
-    parser.add_argument("-T",
-                        "--tile-size",
-                        type=int,
-                        default=None,
-                        help="retile input files with specific tile size")
+    parser.add_argument(
+        "--threshold",
+        "-t",
+        type=float,
+        default=None,
+        help="apply a threshold before polygonizing",
+    )
+    parser.add_argument(
+        "--value",
+        type=float,
+        default=None,
+        help=(
+            "value to use on output after thresholding. "
+            "If None, use the original value from src."
+        ),
+    )
 
-    parser.add_argument("--version",
-                        action="version",
-                        version="satproc {ver}".format(ver=__version__))
+    parser.add_argument(
+        "--tile-size",
+        type=int,
+        default=None,
+        help="retile input files with specific tile size",
+    )
+
+    parser.add_argument(
+        "--version", action="version", version="satproc {ver}".format(ver=__version__)
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -69,10 +86,12 @@ def setup_logging(loglevel):
       loglevel (int): minimum loglevel for emitting messages
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
-    logging.basicConfig(level=loglevel,
-                        stream=sys.stdout,
-                        format=logformat,
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(
+        level=loglevel,
+        stream=sys.stdout,
+        format=logformat,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 def main(args):
@@ -88,24 +107,30 @@ def main(args):
     if args.input_image:
         input_files.extend(args.input_image)
     if args.input_dir:
-        files = list(glob(os.path.join(args.input_dir, '*.tif')))
+        files = list(glob(os.path.join(args.input_dir, "*.tif")))
         input_files.extend(files)
 
     if not input_files:
         raise RuntimeError(
-            "no input files found (you should pass individual input_image paths, or use --input-dir"
+            (
+                "No input files found. "
+                "You should pass individual input_image paths, or use --input-dir."
+            )
         )
     _logger.info("Num. input files: %d", len(input_files))
 
-    polygonize(input_files=input_files,
-               output=args.output,
-               temp_dir=args.temp_dir,
-               tile_size=args.tile_size)
+    polygonize(
+        input_files=input_files,
+        output=args.output,
+        temp_dir=args.temp_dir,
+        threshold=args.threshold,
+        value=args.value,
+        tile_size=args.tile_size,
+    )
 
 
 def run():
-    """Entry point for console_scripts
-    """
+    """Entry point for console_scripts"""
     main(sys.argv[1:])
 
 

@@ -35,8 +35,8 @@ def apply_threshold(src, dst, value=None, *, threshold):
         if None, use the original value from src
 
     """
-    # Rescale to 255
-    threshold = threshold * 255
+    # Rescale to 256
+    threshold = threshold * 256
 
     if not value:
         value = "A"
@@ -83,7 +83,7 @@ def merge_vector_files(*, input_dir, output, tmpdir):
 
     # Second, merge ogrmerge results using ogr2ogr into a single file
     group_paths = glob(os.path.join(groups_dir, "*.gpkg"))
-    os.makedirs(os.path.dirname(output), exist_ok=True)
+    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
     for src in tqdm(group_paths):
         run_command(f"ogr2ogr -f GPKG -update -append {output} {src}", quiet=False)
 
@@ -112,8 +112,21 @@ def retile(raster, output_dir, tile_size):
     )
 
 
-def polygonize(threshold=None, value=None, temp_dir=None, *, input_dir, output):
-    images = list(glob(os.path.join(input_dir, "*.tif")))
+def polygonize(
+    threshold=None,
+    value=None,
+    temp_dir=None,
+    input_files=[],
+    input_dir=None,
+    tile_size=None,
+    *,
+    output,
+):
+    if input_dir:
+        input_files = list(glob(os.path.join(input_dir, "*.tif")))
+
+    if not input_files:
+        raise ValueError("No input files")
 
     must_remove_temp_dir = False
     if temp_dir:
@@ -125,9 +138,13 @@ def polygonize(threshold=None, value=None, temp_dir=None, *, input_dir, output):
         tmpdir = tempfile.TemporaryDirectory()
         temp_dir = tmpdir.name
 
+    # Retile input images before processing (if tile_size is present)
+    if tile_size:
+        input_files = retile_all(input_files, tile_size, temp_dir)
+
     # Process all chip images
     worker = partial(process_image, tmpdir=temp_dir, threshold=threshold, value=value)
-    map_with_threads(images, worker)
+    map_with_threads(input_files, worker)
 
     # Merge all vector files into a single one
     merge_vector_files(input_dir=temp_dir, output=output, tmpdir=temp_dir)
