@@ -169,6 +169,7 @@ def extract_chips(
     crs=None,
     skip_existing=True,
     within=False,
+    windows_mode="whole_overlap",
     *,
     size,
     step_size,
@@ -207,6 +208,7 @@ def extract_chips(
             mask_type=mask_type,
             aoi_poly=aoi_poly,
             polys_dict=polys_dict,
+            windows_mode=windows_mode,
             skip_existing=skip_existing,
         )
 
@@ -227,6 +229,7 @@ def extract_chips_from_raster(
     within=False,
     aoi_poly=None,
     polys_dict=None,
+    windows_mode="whole_overlap",
     *,
     size,
     step_size,
@@ -257,7 +260,9 @@ def extract_chips_from_raster(
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(
-            sliding_windows(win_size, win_step_size, ds.width, ds.height, whole=True)
+            sliding_windows(
+                win_size, win_step_size, ds.width, ds.height, mode=windows_mode
+            )
         )
         _logger.info("Total windows: %d", len(windows))
 

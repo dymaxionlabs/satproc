@@ -80,6 +80,7 @@ def build_dataset(
     rescale_mode=None,
     rescale_range=None,
     bands=[1, 2, 3],
+    windows_mode="whole_overlap",
 ):
 
     blocks = fiona.open(dataset_path)
@@ -107,7 +108,11 @@ def build_dataset(
             win_step_size = (step_size, step_size)
             windows = list(
                 sliding_windows(
-                    win_size, win_step_size, src.shape[1], src.shape[0], whole=True
+                    win_size,
+                    win_step_size,
+                    src.shape[1],
+                    src.shape[0],
+                    mode=windows_mode,
                 )
             )
 

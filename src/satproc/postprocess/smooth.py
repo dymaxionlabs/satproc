@@ -25,11 +25,10 @@ def spline_window(window_size, power=2):
     https://www.wolframalpha.com/input/?i=y%3Dx**2,+y%3D-(x-2)**2+%2B2,+y%3D(x-4)**2,+from+y+%3D+0+to+2
     """
     intersection = int(window_size / 4)
-    wind_outer = (abs(2 * (scipy.signal.triang(window_size)))**power) / 2
+    wind_outer = (abs(2 * (scipy.signal.triang(window_size))) ** power) / 2
     wind_outer[intersection:-intersection] = 0
 
-    wind_inner = 1 - (abs(2 *
-                          (scipy.signal.triang(window_size) - 1))**power) / 2
+    wind_inner = 1 - (abs(2 * (scipy.signal.triang(window_size) - 1)) ** power) / 2
     wind_inner[:intersection] = 0
     wind_inner[-intersection:] = 0
 
@@ -55,7 +54,7 @@ def generate_spline_window_chips(*, image_paths, output_dir):
     with rasterio.open(first_image) as src:
         chip_size = src.width
         n_channels = src.count
-        assert (src.width == src.height)
+        assert src.width == src.height
 
     spline_window = window_2D(size=chip_size, power=2, n_channels=n_channels)
 
@@ -70,7 +69,7 @@ def generate_spline_window_chips(*, image_paths, output_dir):
         out_path = os.path.join(output_dir, os.path.basename(img_path))
         os.makedirs(output_dir, exist_ok=True)
         res.append(out_path)
-        with rasterio.open(out_path, 'w', **profile) as dst:
+        with rasterio.open(out_path, "w", **profile) as dst:
             for i in range(img.shape[0]):
                 dst.write(img[i, :, :], i + 1)
 
@@ -78,13 +77,9 @@ def generate_spline_window_chips(*, image_paths, output_dir):
 
 
 # Based on 'max' method from https://github.com/mapbox/rasterio/blob/master/rasterio/merge.py
-def mean_merge_method(old_data,
-                      new_data,
-                      old_nodata,
-                      new_nodata,
-                      index=None,
-                      roff=None,
-                      coff=None):
+def mean_merge_method(
+    old_data, new_data, old_nodata, new_nodata, index=None, roff=None, coff=None
+):
     mask = np.logical_and(~old_nodata, ~new_nodata)
     old_data[mask] = np.mean([old_data[mask], new_data[mask]], axis=0)
 
@@ -125,9 +120,7 @@ def sliding_windows(size, whole=False, step_size=None, *, width, height):
 def merge_chips(images_files, *, win_bounds):
     """Merge by taking mean between overlapping images"""
     datasets = [rasterio.open(p) for p in images_files]
-    img, _ = rasterio.merge.merge(datasets,
-                                  bounds=win_bounds,
-                                  method=mean_merge_method)
+    img, _ = rasterio.merge.merge(datasets, bounds=win_bounds, method=mean_merge_method)
     for ds in datasets:
         ds.close()
     return img
@@ -138,7 +131,7 @@ def smooth_stitch(*, input_dir, output_dir):
     Takes input directory of overlapping chips, and generates a new directory
     of non-overlapping chips with smooth edges.
     """
-    image_paths = glob(os.path.join(input_dir, '*.tif'))
+    image_paths = glob(os.path.join(input_dir, "*.tif"))
     if not image_paths:
         raise RuntimeError("%s does not contain any .tif file" % (input_dir))
 
@@ -148,11 +141,12 @@ def smooth_stitch(*, input_dir, output_dir):
         profile = src.profile.copy()
         src_res = src.res
         chip_size = src.width
-        assert (src.width == src.height)
+        assert src.width == src.height
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_image_paths = generate_spline_window_chips(image_paths=image_paths,
-                                                       output_dir=tmpdir)
+        tmp_image_paths = generate_spline_window_chips(
+            image_paths=image_paths, output_dir=tmpdir
+        )
 
         # Get bounds from all images and build R-Tree index
         idx, (dst_w, dst_s, dst_e, dst_n) = build_bounds_index(tmp_image_paths)
@@ -174,9 +168,8 @@ def smooth_stitch(*, input_dir, output_dir):
         profile.update(width=chip_size, height=chip_size, tiled=True)
 
         windows = list(
-            sliding_windows(chip_size,
-                            width=output_width,
-                            height=output_height))
+            sliding_windows(chip_size, width=output_width, height=output_height)
+        )
         logger.info("Num. windows: %d", len(windows))
 
         for win, (i, j) in tqdm(windows):
@@ -195,9 +188,9 @@ def smooth_stitch(*, input_dir, output_dir):
 
                 # Write output chip
                 profile.update(transform=win_transform)
-                output_path = os.path.join(output_dir, f'{i}_{j}.tif')
+                output_path = os.path.join(output_dir, f"{i}_{j}.tif")
 
                 os.makedirs(output_dir, exist_ok=True)
-                with rasterio.open(output_path, 'w', **profile) as dst:
+                with rasterio.open(output_path, "w", **profile) as dst:
                     for i in range(img.shape[0]):
                         dst.write(img[i, :, :], i + 1)

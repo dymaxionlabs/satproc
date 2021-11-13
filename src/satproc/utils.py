@@ -28,7 +28,7 @@ def grouper(iterable, n, fillvalue=None):
     return zip_longest(*args, fillvalue=fillvalue)
 
 
-def sliding_windows(size, step_size, width, height, whole=False):
+def sliding_windows(size, step_size, width, height, mode="exact"):
     """Slide a window of +size+ by moving it +step_size+ pixels
 
     Parameters
@@ -41,8 +41,11 @@ def sliding_windows(size, step_size, width, height, whole=False):
         image width
     height : int
         image height
-    whole : bool (default: False)
-        whether to generate only whole chips, or clip them at borders if needed
+    mode : str (default: 'exact')
+        either one of 'exact', 'whole', 'whole_overlap'.
+        - 'exact': clip windows at borders, if needed
+        - 'whole': only whole windows
+        - 'whole_overlap': only wohle windows, allow overlapping windows at borders.
 
     Yields
     ------
@@ -52,14 +55,18 @@ def sliding_windows(size, step_size, width, height, whole=False):
     """
     w, h = size
     sw, sh = step_size
+
+    whole = mode in ("whole", "whole_overlap")
     end_i = height - h if whole else height
     end_j = width - w if whole else width
+
     for pos_i, i in enumerate(range(0, end_i, sh)):
         for pos_j, j in enumerate(range(0, end_j, sw)):
             real_w = w if whole else min(w, abs(width - j))
             real_h = h if whole else min(h, abs(height - i))
             yield Window(j, i, real_w, real_h), (pos_i, pos_j)
-    if whole and (height % sh != 0 or width % sw != 0):
+
+    if mode == "whole_overlap" and (height % sh != 0 or width % sw != 0):
         last_pos_i, last_pos_j = pos_i, pos_j
         for pos_i, i in enumerate(range(0, height - h, sh)):
             yield Window(width - w, i, w, h), (

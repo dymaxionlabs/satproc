@@ -86,7 +86,10 @@ def match_histograms(src_path, dst_path, size=128, step_size=128, *, reference_p
         profile = src.profile.copy()
         windows = list(
             sliding_windows(
-                (size, size), (step_size, step_size), src.width, src.height, whole=False
+                (size, size),
+                (step_size, step_size),
+                src.width,
+                src.height,
             )
         )
 

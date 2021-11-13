@@ -52,6 +52,12 @@ def parse_args(args):
     parser.add_argument(
         "--step-size", type=int, default=128, help="step size (i.e. stride), in pixels"
     )
+    parser.add_argument(
+        "--sliding-windows-mode",
+        choices=["exact", "whole", "whole_overlap"],
+        default="whole_overlap",
+        help="mode of sliding windows",
+    )
     parser.add_argument("--labels", help="inpul label shapefile")
     parser.add_argument(
         "--label-property",
@@ -262,6 +268,7 @@ def main(args):
         skip_existing=args.skip_existing,
         size=args.size,
         step_size=args.step_size,
+        windows_mode=args.sliding_windows_mode,
         output_dir=args.output_dir,
     )
 
