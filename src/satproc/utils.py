@@ -5,6 +5,7 @@ import multiprocessing as mp
 import os
 import subprocess
 from itertools import zip_longest
+from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
@@ -287,19 +288,33 @@ def run_command(cmd, quiet=True):
     subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)
 
 
-def map_with_threads(items, worker, num_jobs=None, total=None):
-    """Map a worker function to an iterable of items, using a thread pool
+def map_with_processes(*args, num_jobs=None, **kwargs):
+    with Pool(num_jobs) as pool:
+        return _parallel_map(pool, *args, **kwargs)
+
+
+def map_with_threads(*args, num_jobs=None, **kwargs):
+    with ThreadPool(num_jobs) as pool:
+        return _parallel_map(pool, *args, **kwargs)
+
+
+def _parallel_map(pool, items, worker, num_jobs=None, total=None, desc=""):
+    """Map a worker function to an iterable of items, using a concurrent Pool
 
     Parameters
     ----------
+    pool: mp.Pool
+        a concurrent Pool instance
     items : iterable
         items to map
     worker : Function
         worker function to apply to each item
-    num_jobs : int
+    num_jobs : Optional[int]
         number of threads to use
-    total : int (optional)
-        total number of items (for the progress bar)
+    total : Optional[int]
+        total number of items (for progress bar)
+    desc : str
+        description to use as prefix (for progress bar)
 
     Returns
     -------
@@ -310,8 +325,10 @@ def map_with_threads(items, worker, num_jobs=None, total=None):
         total = len(items)
     if not num_jobs:
         num_jobs = mp.cpu_count()
+    results = []
     with ThreadPool(num_jobs) as pool:
         with logging_redirect_tqdm():
-            with tqdm(total=len(items), ascii=True) as pbar:
-                for _ in enumerate(pool.imap_unordered(worker, items)):
+            with tqdm(total=len(items), desc=desc, ascii=True) as pbar:
+                for result in pool.imap_unordered(worker, items, chunksize=4):
                     pbar.update()
+                    results.append(result)

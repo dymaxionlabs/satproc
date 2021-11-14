@@ -189,6 +189,14 @@ def parse_args(args):
     )
 
     parser.add_argument(
+        "--num-jobs",
+        "-j",
+        type=int,
+        default=1,
+        help="number of jobs to run in parallel",
+    )
+
+    parser.add_argument(
         "--version", action="version", version="satproc {ver}".format(ver=__version__)
     )
     parser.add_argument(
@@ -284,6 +292,7 @@ def main(args):
         step_size=args.step_size,
         windows_mode=args.sliding_windows_mode,
         output_dir=args.output_dir,
+        num_jobs=args.num_jobs,
     )
 
 
