@@ -83,9 +83,6 @@ def parse_args(args):
         action="store_false",
         help="do not generate boundary mask",
     )
-    parser.add_argument(
-        "--boundary-width", default=10, help="boundary width (in meters)"
-    )
     parser.add_argument("--aoi", help="Filter by AOI vector file")
     parser.add_argument(
         "--within",
@@ -274,7 +271,6 @@ def main(args):
         label_property=args.label_property,
         mask_type=args.mask_type,
         boundary_mask=args.boundary_mask,
-        boundary_width=args.boundary_width,
         rescale_mode=rescale_mode,
         rescale_range=rescale_range,
         bands=bands,

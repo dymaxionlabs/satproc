@@ -12,6 +12,7 @@ from shapely.ops import unary_union
 from skimage import exposure
 from skimage.io import imsave
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
 
@@ -70,15 +71,13 @@ def mask_from_polygons(polygons, *, win, t):
     return mask
 
 
-def boundary_mask_from_polygons(polygons, width=10, *, win, t):
+def boundary_mask_from_polygons(polygons, *, win, t):
     """Generate a binary boundary (edges) mask array from a set of polygons
 
     Parameters
     ----------
     polygons : List[Union[Polygon, MultiPolygon]]
         list of polygon or multipolygon geometries
-    width : int
-        width of the edges (in meters)
     win : rasterio.windows.Window
         window
     t : rasterio.transform.Affine
@@ -89,7 +88,6 @@ def boundary_mask_from_polygons(polygons, width=10, *, win, t):
     numpy.ndarray
 
     """
-    # TODO
     transform = rasterio.windows.transform(win, t)
     if polygons is None or len(polygons) == 0:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
@@ -121,7 +119,6 @@ def multiband_chip_mask_by_classes(
     label_path=None,
     window_shape=None,
     boundary_mask=False,
-    boundary_width=10,
     boundary_mask_path=None,
     metadata={},
 ):
@@ -139,9 +136,7 @@ def multiband_chip_mask_by_classes(
         )
         if boundary_mask:
             boundary_multi_band_mask.append(
-                boundary_mask_from_polygons(
-                    polys_dict[k], win=window, t=transform, width=boundary_width
-                )
+                boundary_mask_from_polygons(polys_dict[k], win=window, t=transform)
             )
 
     for mask_bands, mask_path in zip(
@@ -217,7 +212,6 @@ def extract_chips(
     label_property="class",
     mask_type="class",
     boundary_mask=False,
-    boundary_width=10,
     rescale_mode=None,
     rescale_range=None,
     bands=None,
@@ -247,30 +241,30 @@ def extract_chips(
     else:
         polys_dict = None
 
-    for raster in tqdm(rasters):
-        extract_chips_from_raster(
-            raster,
-            size=size,
-            step_size=step_size,
-            rescale_mode=rescale_mode,
-            rescale_range=rescale_range,
-            bands=bands,
-            output_dir=output_dir,
-            type=type,
-            within=within,
-            write_footprints=write_footprints,
-            crs=crs,
-            labels=labels,
-            label_property=label_property,
-            classes=classes,
-            mask_type=mask_type,
-            boundary_mask=boundary_mask,
-            boundary_width=boundary_width,
-            aoi_poly=aoi_poly,
-            polys_dict=polys_dict,
-            windows_mode=windows_mode,
-            skip_existing=skip_existing,
-        )
+    with logging_redirect_tqdm():
+        for raster in tqdm(rasters, desc="Rasters", ascii=True):
+            extract_chips_from_raster(
+                raster,
+                size=size,
+                step_size=step_size,
+                rescale_mode=rescale_mode,
+                rescale_range=rescale_range,
+                bands=bands,
+                output_dir=output_dir,
+                type=type,
+                within=within,
+                write_footprints=write_footprints,
+                crs=crs,
+                labels=labels,
+                label_property=label_property,
+                classes=classes,
+                mask_type=mask_type,
+                boundary_mask=boundary_mask,
+                aoi_poly=aoi_poly,
+                polys_dict=polys_dict,
+                windows_mode=windows_mode,
+                skip_existing=skip_existing,
+            )
 
 
 def extract_chips_from_raster(
@@ -291,7 +285,6 @@ def extract_chips_from_raster(
     polys_dict=None,
     windows_mode="whole_overlap",
     boundary_mask=False,
-    boundary_width=10,
     *,
     size,
     step_size,
@@ -358,9 +351,10 @@ def extract_chips_from_raster(
             # If rescaling, set nodata=0 (will rescale to uint8 1-255)
             meta["nodata"] = 0
 
+        basename = os.path.basename(raster)
         chips = []
         for c, ((window, (i, j)), win_shape) in tqdm(
-            list(enumerate(window_and_shapes))
+            list(enumerate(window_and_shapes)), desc=f"{basename} windows", ascii=True
         ):
             _logger.debug("%s %s", window, (i, j))
 
@@ -369,19 +363,16 @@ def extract_chips_from_raster(
             boundary_mask_path = os.path.join(
                 boundary_masks_folder, f"{basename}_{i}_{j}.{type}"
             )
-            if (
-                skip_existing
-                and os.path.exists(img_path)
-                and (
-                    not labels
-                    or (os.path.exists(mask_path))
-                    and (
-                        not labels
-                        or not boundary_width
-                        or os.path.exists(boundary_mask_path)
-                    )
-                )
-            ):
+
+            # Gather list of required files
+            required_files = {img_path}
+            if labels:
+                required_files.add(mask_path)
+                if boundary_mask:
+                    required_files.add(boundary_mask_path)
+
+            # If all files already exist and we are skipping existing files, continue
+            if skip_existing and all(os.path.exists(p) for p in required_files):
                 continue
 
             img = ds.read(window=window)
@@ -420,7 +411,6 @@ def extract_chips_from_raster(
                             mask_path=mask_path,
                             boundary_mask=boundary_mask,
                             boundary_mask_path=boundary_mask_path,
-                            boundary_width=boundary_width,
                             label_property=label_property,
                         )
 

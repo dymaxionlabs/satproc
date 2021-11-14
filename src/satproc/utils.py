@@ -13,6 +13,7 @@ from rasterio.windows import Window
 from shapely.geometry import mapping
 from skimage import exposure
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -310,6 +311,7 @@ def map_with_threads(items, worker, num_jobs=None, total=None):
     if not num_jobs:
         num_jobs = mp.cpu_count()
     with ThreadPool(num_jobs) as pool:
-        with tqdm(total=len(items)) as pbar:
-            for _ in enumerate(pool.imap_unordered(worker, items)):
-                pbar.update()
+        with logging_redirect_tqdm():
+            with tqdm(total=len(items), ascii=True) as pbar:
+                for _ in enumerate(pool.imap_unordered(worker, items)):
+                    pbar.update()
