@@ -222,6 +222,7 @@ def extract_chips(
     skip_existing=True,
     within=False,
     windows_mode="whole_overlap",
+    skip_low_contrast=False,
     *,
     size,
     step_size,
@@ -264,6 +265,7 @@ def extract_chips(
                 polys_dict=polys_dict,
                 windows_mode=windows_mode,
                 skip_existing=skip_existing,
+                skip_low_contrast=skip_low_contrast,
             )
 
 
@@ -285,6 +287,7 @@ def extract_chips_from_raster(
     polys_dict=None,
     windows_mode="whole_overlap",
     boundary_mask=False,
+    skip_low_contrast=False,
     *,
     size,
     step_size,
@@ -390,9 +393,14 @@ def extract_chips_from_raster(
                     meta=meta.copy(),
                     transform=ds.transform,
                     bands=bands,
+                    skip_low_contrast=skip_low_contrast,
                 )
             else:
-                image_was_saved = write_image(img, img_path)
+                image_was_saved = write_image(
+                    img,
+                    img_path,
+                    skip_low_contrast=skip_low_contrast,
+                )
 
             if image_was_saved:
                 chip = (win_shape, (c, i, j))
@@ -422,18 +430,17 @@ def extract_chips_from_raster(
             )
 
 
-def write_image(img, path, percentiles=None):
+def write_image(img, path, *, percentiles=None, skip_low_contrast=False):
     rgb = np.dstack(img[:3, :, :]).astype(np.uint8)
-    if exposure.is_low_contrast(rgb):
+    if skip_low_contrast and exposure.is_low_contrast(rgb):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    if not os.path.exists(path):
-        imsave(path, rgb)
+    imsave(path, rgb)
     return True
 
 
-def write_tif(img, path, *, window, meta, transform, bands):
-    if exposure.is_low_contrast(img):
+def write_tif(img, path, *, skip_low_contrast=False, window, meta, transform, bands):
+    if skip_low_contrast and exposure.is_low_contrast(img):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     meta.update(

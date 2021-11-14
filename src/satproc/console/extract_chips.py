@@ -189,6 +189,20 @@ def parse_args(args):
     )
 
     parser.add_argument(
+        "--skip-low-contrast",
+        dest="skip_low_contrast",
+        default=False,
+        action="store_true",
+        help="skip image chips with low contrast",
+    )
+    parser.add_argument(
+        "--no-skip-low-contrast",
+        dest="skip_low_contrast",
+        action="store_false",
+        help="do not skip image chips with low contrast",
+    )
+
+    parser.add_argument(
         "--version", action="version", version="satproc {ver}".format(ver=__version__)
     )
     parser.add_argument(
@@ -280,6 +294,7 @@ def main(args):
         classes=args.classes,
         crs=args.crs,
         skip_existing=args.skip_existing,
+        skip_low_contrast=args.skip_low_contrast,
         size=args.size,
         step_size=args.step_size,
         windows_mode=args.sliding_windows_mode,
