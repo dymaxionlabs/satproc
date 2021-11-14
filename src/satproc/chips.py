@@ -164,7 +164,7 @@ def extract_chips(
     rescale_range=None,
     bands=None,
     type="tif",
-    write_geojson=False,
+    write_footprints=False,
     classes=None,
     crs=None,
     skip_existing=True,
@@ -200,7 +200,7 @@ def extract_chips(
             output_dir=output_dir,
             type=type,
             within=within,
-            write_geojson=write_geojson,
+            write_footprints=write_footprints,
             crs=crs,
             labels=labels,
             label_property=label_property,
@@ -219,7 +219,7 @@ def extract_chips_from_raster(
     rescale_range=None,
     bands=None,
     type="tif",
-    write_geojson=False,
+    write_footprints=False,
     labels=None,
     label_property="class",
     mask_type="class",
@@ -347,9 +347,9 @@ def extract_chips_from_raster(
                             label_property=label_property,
                         )
 
-        if write_geojson:
+        if write_footprints:
             geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
-            _logger.info("Write chips geojson at %s", geojson_path)
+            _logger.info("Write chips footprints GeoJSON at %s", geojson_path)
             write_chips_geojson(
                 geojson_path, chips, type=type, crs=str(meta["crs"]), basename=basename
             )

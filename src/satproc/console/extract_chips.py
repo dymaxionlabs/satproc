@@ -146,16 +146,16 @@ def parse_args(args):
     )
 
     parser.add_argument(
-        "--write-geojson",
-        help="write a GeoJSON file of chip polygons",
-        dest="write_geojson",
+        "--write-footprints",
+        help="write a GeoJSON file of chip footprints",
+        dest="write_footprints",
         action="store_true",
         default=False,
     )
     parser.add_argument(
-        "--no-write-geojson",
-        help="do not write a GeoJSON file of chip polygons",
-        dest="write_geojson",
+        "--no-write-footprints",
+        help="do not write a GeoJSON file of chip footprints",
+        dest="write_footprints",
         action="store_false",
     )
 
@@ -262,7 +262,7 @@ def main(args):
         bands=bands,
         type=args.type,
         within=args.within,
-        write_geojson=args.write_geojson,
+        write_footprints=args.write_footprints,
         classes=args.classes,
         crs=args.crs,
         skip_existing=args.skip_existing,
