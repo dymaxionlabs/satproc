@@ -46,7 +46,7 @@ def get_shape(feature):
         return None
 
 
-def mask_from_polygons(polygons, *, win, t, distance_mask=None):
+def mask_from_polygons(polygons, *, win, t, boundary_mask=None, distance_mask=None):
     """Generate a binary mask array from a set of polygon
 
     It can also generate a distance transform mask
@@ -59,6 +59,8 @@ def mask_from_polygons(polygons, *, win, t, distance_mask=None):
         window
     t : rasterio.transform.Affine
         affine transform
+    boundary_mask : bool
+        whether to generate boundary (edges) mask
     distance_mask : bool
         whether to generate a distance mask
 
@@ -68,45 +70,30 @@ def mask_from_polygons(polygons, *, win, t, distance_mask=None):
 
     """
     transform = rasterio.windows.transform(win, t)
+    bound_mask, dist_mask = None, None
+
     if polygons is None or len(polygons) == 0:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
+        if boundary_mask:
+            bound_mask = mask.copy()
         if distance_mask:
             dist_mask = mask.copy()
-    else:
-        mask = rasterize(
-            polygons, (win.height, win.width), default_value=255, transform=transform
-        )
-        if distance_mask:
-            dist_mask = cv2.distanceTransform(mask, cv2.DIST_L2, 3).astype(np.uint8)
-    return mask, dist_mask
+        return mask, bound_mask, dist_mask
 
-
-def boundary_mask_from_polygons(polygons, *, win, t):
-    """Generate a binary boundary (edges) mask array from a set of polygons
-
-    Parameters
-    ----------
-    polygons : List[Union[Polygon, MultiPolygon]]
-        list of polygon or multipolygon geometries
-    win : rasterio.windows.Window
-        window
-    t : rasterio.transform.Affine
-        affine transform
-
-    Returns
-    -------
-    numpy.ndarray
-
-    """
-    transform = rasterio.windows.transform(win, t)
-    if polygons is None or len(polygons) == 0:
-        mask = np.zeros((win.height, win.width), dtype=np.uint8)
-    else:
+    mask = rasterize(
+        polygons, (win.height, win.width), default_value=255, transform=transform
+    )
+    if boundary_mask or distance_mask:
         lines = _get_linestrings_from_polygons(polygons)
-        mask = rasterize(
+        bound_mask = rasterize(
             lines, (win.height, win.width), default_value=255, transform=transform
         )
-    return mask
+        if distance_mask:
+            mask_no_bounds = mask - bound_mask
+            dist_mask = cv2.distanceTransform(mask_no_bounds, cv2.DIST_L2, 3).astype(
+                np.uint8
+            )
+    return mask, bound_mask, dist_mask
 
 
 def _get_linestrings_from_polygons(polys):
@@ -144,19 +131,18 @@ def multiband_chip_mask_by_classes(
         window_shape = box(*rasterio.windows.bounds(window, transform))
 
     for k in classes:
-        mask, dist_mask = mask_from_polygons(
+        mask, bound_mask, dist_mask = mask_from_polygons(
             polys_dict[k],
             win=window,
             t=transform,
+            boundary_mask=boundary_mask,
             distance_mask=distance_mask,
         )
         multi_band_mask.append(mask)
         if distance_mask:
             distance_multi_band_mask.append(dist_mask)
         if boundary_mask:
-            boundary_multi_band_mask.append(
-                boundary_mask_from_polygons(polys_dict[k], win=window, t=transform)
-            )
+            boundary_multi_band_mask.append(bound_mask)
 
     for mask_bands, mask_path in zip(
         [multi_band_mask, boundary_multi_band_mask, distance_multi_band_mask],
