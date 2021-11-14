@@ -70,6 +70,47 @@ def mask_from_polygons(polygons, *, win, t):
     return mask
 
 
+def boundary_mask_from_polygons(polygons, width=10, *, win, t):
+    """Generate a binary boundary (edges) mask array from a set of polygons
+
+    Parameters
+    ----------
+    polygons : List[Union[Polygon, MultiPolygon]]
+        list of polygon or multipolygon geometries
+    width : int
+        width of the edges (in meters)
+    win : rasterio.windows.Window
+        window
+    t : rasterio.transform.Affine
+        affine transform
+
+    Returns
+    -------
+    numpy.ndarray
+
+    """
+    # TODO
+    transform = rasterio.windows.transform(win, t)
+    if polygons is None or len(polygons) == 0:
+        mask = np.zeros((win.height, win.width), dtype=np.uint8)
+    else:
+        lines = _get_linestrings_from_polygons(polygons)
+        mask = rasterize(
+            lines, (win.height, win.width), default_value=255, transform=transform
+        )
+    return mask
+
+
+def _get_linestrings_from_polygons(polys):
+    for poly in polys:
+        boundary = poly.boundary
+        if boundary.type == "MultiLineString":
+            for line in boundary:
+                yield line
+        else:
+            yield boundary
+
+
 def multiband_chip_mask_by_classes(
     classes,
     transform,
@@ -79,9 +120,14 @@ def multiband_chip_mask_by_classes(
     polys_dict=None,
     label_path=None,
     window_shape=None,
+    boundary_mask=False,
+    boundary_width=10,
+    boundary_mask_path=None,
     metadata={},
 ):
     multi_band_mask = []
+    boundary_multi_band_mask = []
+
     if polys_dict is None and label_path is not None:
         polys_dict = classify_polygons(label_path, label_property, classes)
     if window_shape is None:
@@ -91,22 +137,32 @@ def multiband_chip_mask_by_classes(
         multi_band_mask.append(
             mask_from_polygons(polys_dict[k], win=window, t=transform)
         )
+        if boundary_mask:
+            boundary_multi_band_mask.append(
+                boundary_mask_from_polygons(
+                    polys_dict[k], win=window, t=transform, width=boundary_width
+                )
+            )
 
-    kwargs = metadata.copy()
-    kwargs.update(
-        driver="GTiff",
-        dtype=rasterio.uint8,
-        count=len(multi_band_mask),
-        nodata=0,
-        transform=rasterio.windows.transform(window, transform),
-        width=window.width,
-        height=window.height,
-    )
+    for mask_bands, mask_path in zip(
+        [multi_band_mask, boundary_multi_band_mask], [mask_path, boundary_mask_path]
+    ):
+        if mask_bands:
+            kwargs = metadata.copy()
+            kwargs.update(
+                driver="GTiff",
+                dtype=rasterio.uint8,
+                count=len(mask_bands),
+                nodata=0,
+                transform=rasterio.windows.transform(window, transform),
+                width=window.width,
+                height=window.height,
+            )
 
-    os.makedirs(os.path.dirname(mask_path), exist_ok=True)
-    with rasterio.open(mask_path, "w", **kwargs) as dst:
-        for i in range(len(multi_band_mask)):
-            dst.write(multi_band_mask[i], i + 1)
+            os.makedirs(os.path.dirname(mask_path), exist_ok=True)
+            with rasterio.open(mask_path, "w", **kwargs) as dst:
+                for i in range(len(mask_bands)):
+                    dst.write(mask_bands[i], i + 1)
 
 
 def classify_polygons(labels, label_property, classes):
@@ -160,6 +216,8 @@ def extract_chips(
     labels=None,
     label_property="class",
     mask_type="class",
+    boundary_mask=False,
+    boundary_width=10,
     rescale_mode=None,
     rescale_range=None,
     bands=None,
@@ -206,6 +264,8 @@ def extract_chips(
             label_property=label_property,
             classes=classes,
             mask_type=mask_type,
+            boundary_mask=boundary_mask,
+            boundary_width=boundary_width,
             aoi_poly=aoi_poly,
             polys_dict=polys_dict,
             windows_mode=windows_mode,
@@ -230,6 +290,8 @@ def extract_chips_from_raster(
     aoi_poly=None,
     polys_dict=None,
     windows_mode="whole_overlap",
+    boundary_mask=False,
+    boundary_width=10,
     *,
     size,
     step_size,
@@ -241,8 +303,9 @@ def extract_chips_from_raster(
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
-    masks_folder = os.path.join(output_dir, "masks")
     image_folder = os.path.join(output_dir, "images")
+    masks_folder = os.path.join(output_dir, "masks")
+    boundary_masks_folder = os.path.join(output_dir, "boundaries")
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -303,10 +366,21 @@ def extract_chips_from_raster(
 
             img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
             mask_path = os.path.join(masks_folder, f"{basename}_{i}_{j}.{type}")
+            boundary_mask_path = os.path.join(
+                boundary_masks_folder, f"{basename}_{i}_{j}.{type}"
+            )
             if (
                 skip_existing
                 and os.path.exists(img_path)
-                and (not labels or os.path.exists(mask_path))
+                and (
+                    not labels
+                    or (os.path.exists(mask_path))
+                    and (
+                        not labels
+                        or not boundary_width
+                        or os.path.exists(boundary_mask_path)
+                    )
+                )
             ):
                 continue
 
@@ -344,6 +418,9 @@ def extract_chips_from_raster(
                             polys_dict=polys_dict,
                             metadata=meta,
                             mask_path=mask_path,
+                            boundary_mask=boundary_mask,
+                            boundary_mask_path=boundary_mask_path,
+                            boundary_width=boundary_width,
                             label_property=label_property,
                         )
 
