@@ -1,6 +1,8 @@
 import logging
 import os
 
+import cv2
+
 # Workaround: Load fiona at the end to avoid segfault on box (???)
 import fiona
 import numpy as np
@@ -44,8 +46,10 @@ def get_shape(feature):
         return None
 
 
-def mask_from_polygons(polygons, *, win, t):
+def mask_from_polygons(polygons, *, win, t, distance_mask=None):
     """Generate a binary mask array from a set of polygon
+
+    It can also generate a distance transform mask
 
     Parameters
     ----------
@@ -55,6 +59,8 @@ def mask_from_polygons(polygons, *, win, t):
         window
     t : rasterio.transform.Affine
         affine transform
+    distance_mask : bool
+        whether to generate a distance mask
 
     Returns
     -------
@@ -64,11 +70,15 @@ def mask_from_polygons(polygons, *, win, t):
     transform = rasterio.windows.transform(win, t)
     if polygons is None or len(polygons) == 0:
         mask = np.zeros((win.height, win.width), dtype=np.uint8)
+        if distance_mask:
+            dist_mask = mask.copy()
     else:
         mask = rasterize(
             polygons, (win.height, win.width), default_value=255, transform=transform
         )
-    return mask
+        if distance_mask:
+            dist_mask = cv2.distanceTransform(mask, cv2.DIST_L2, 3).astype(np.uint8)
+    return mask, dist_mask
 
 
 def boundary_mask_from_polygons(polygons, *, win, t):
@@ -120,10 +130,13 @@ def multiband_chip_mask_by_classes(
     window_shape=None,
     boundary_mask=False,
     boundary_mask_path=None,
+    distance_mask=False,
+    distance_mask_path=None,
     metadata={},
 ):
     multi_band_mask = []
     boundary_multi_band_mask = []
+    distance_multi_band_mask = []
 
     if polys_dict is None and label_path is not None:
         polys_dict = classify_polygons(label_path, label_property, classes)
@@ -131,16 +144,23 @@ def multiband_chip_mask_by_classes(
         window_shape = box(*rasterio.windows.bounds(window, transform))
 
     for k in classes:
-        multi_band_mask.append(
-            mask_from_polygons(polys_dict[k], win=window, t=transform)
+        mask, dist_mask = mask_from_polygons(
+            polys_dict[k],
+            win=window,
+            t=transform,
+            distance_mask=distance_mask,
         )
+        multi_band_mask.append(mask)
+        if distance_mask:
+            distance_multi_band_mask.append(dist_mask)
         if boundary_mask:
             boundary_multi_band_mask.append(
                 boundary_mask_from_polygons(polys_dict[k], win=window, t=transform)
             )
 
     for mask_bands, mask_path in zip(
-        [multi_band_mask, boundary_multi_band_mask], [mask_path, boundary_mask_path]
+        [multi_band_mask, boundary_multi_band_mask, distance_multi_band_mask],
+        [mask_path, boundary_mask_path, distance_mask_path],
     ):
         if mask_bands:
             kwargs = metadata.copy()
@@ -212,6 +232,7 @@ def extract_chips(
     label_property="class",
     mask_type="class",
     boundary_mask=False,
+    distance_mask=False,
     rescale_mode=None,
     rescale_range=None,
     bands=None,
@@ -261,6 +282,7 @@ def extract_chips(
                 classes=classes,
                 mask_type=mask_type,
                 boundary_mask=boundary_mask,
+                distance_mask=distance_mask,
                 aoi_poly=aoi_poly,
                 polys_dict=polys_dict,
                 windows_mode=windows_mode,
@@ -287,6 +309,7 @@ def extract_chips_from_raster(
     polys_dict=None,
     windows_mode="whole_overlap",
     boundary_mask=False,
+    distance_mask=False,
     skip_low_contrast=False,
     *,
     size,
@@ -302,6 +325,7 @@ def extract_chips_from_raster(
     image_folder = os.path.join(output_dir, "images")
     masks_folder = os.path.join(output_dir, "masks")
     boundary_masks_folder = os.path.join(output_dir, "boundaries")
+    distance_masks_folder = os.path.join(output_dir, "distances")
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -366,6 +390,9 @@ def extract_chips_from_raster(
             boundary_mask_path = os.path.join(
                 boundary_masks_folder, f"{basename}_{i}_{j}.{type}"
             )
+            distance_mask_path = os.path.join(
+                distance_masks_folder, f"{basename}_{i}_{j}.{type}"
+            )
 
             # Gather list of required files
             required_files = {img_path}
@@ -373,6 +400,8 @@ def extract_chips_from_raster(
                 required_files.add(mask_path)
                 if boundary_mask:
                     required_files.add(boundary_mask_path)
+                if distance_mask:
+                    required_files.add(distance_mask_path)
 
             # If all files already exist and we are skipping existing files, continue
             if skip_existing and all(os.path.exists(p) for p in required_files):
@@ -419,6 +448,8 @@ def extract_chips_from_raster(
                             mask_path=mask_path,
                             boundary_mask=boundary_mask,
                             boundary_mask_path=boundary_mask_path,
+                            distance_mask=distance_mask,
+                            distance_mask_path=distance_mask_path,
                             label_property=label_property,
                         )
 
