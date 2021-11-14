@@ -61,14 +61,15 @@ def sliding_windows(size, step_size, width, height, mode="exact"):
     end_i = height - h if whole else height
     end_j = width - w if whole else width
 
+    last_pos_i, last_pos_j = 0, 0
     for pos_i, i in enumerate(range(0, end_i, sh)):
         for pos_j, j in enumerate(range(0, end_j, sw)):
             real_w = w if whole else min(w, abs(width - j))
             real_h = h if whole else min(h, abs(height - i))
             yield Window(j, i, real_w, real_h), (pos_i, pos_j)
+            last_pos_i, last_pos_j = pos_i, pos_j
 
     if mode == "whole_overlap" and (height % sh != 0 or width % sw != 0):
-        last_pos_i, last_pos_j = pos_i, pos_j
         for pos_i, i in enumerate(range(0, height - h, sh)):
             yield Window(width - w, i, w, h), (
                 pos_i,
