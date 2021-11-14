@@ -302,7 +302,7 @@ def main(args):
         rescale_mode=rescale_mode,
         rescale_range=rescale_range,
         bands=bands,
-        type=args.type,
+        chip_type=args.type,
         within=args.within,
         write_footprints=args.write_footprints,
         classes=args.classes,
