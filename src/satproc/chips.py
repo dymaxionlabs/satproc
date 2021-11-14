@@ -236,7 +236,7 @@ def extract_chips(
     rescale_mode=None,
     rescale_range=None,
     bands=None,
-    type="tif",
+    chip_type="tif",
     write_footprints=False,
     classes=None,
     crs=None,
@@ -273,7 +273,7 @@ def extract_chips(
                 rescale_range=rescale_range,
                 bands=bands,
                 output_dir=output_dir,
-                type=type,
+                chip_type=chip_type,
                 within=within,
                 write_footprints=write_footprints,
                 crs=crs,
@@ -296,7 +296,7 @@ def extract_chips_from_raster(
     rescale_mode=None,
     rescale_range=None,
     bands=None,
-    type="tif",
+    chip_type="tif",
     write_footprints=False,
     labels=None,
     label_property="class",
@@ -385,13 +385,13 @@ def extract_chips_from_raster(
         ):
             _logger.debug("%s %s", window, (i, j))
 
-            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{type}")
-            mask_path = os.path.join(masks_folder, f"{basename}_{i}_{j}.{type}")
+            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{chip_type}")
+            mask_path = os.path.join(masks_folder, f"{basename}_{i}_{j}.{chip_type}")
             boundary_mask_path = os.path.join(
-                boundary_masks_folder, f"{basename}_{i}_{j}.{type}"
+                boundary_masks_folder, f"{basename}_{i}_{j}.{chip_type}"
             )
             distance_mask_path = os.path.join(
-                distance_masks_folder, f"{basename}_{i}_{j}.{type}"
+                distance_masks_folder, f"{basename}_{i}_{j}.{chip_type}"
             )
 
             # Gather list of required files
@@ -414,7 +414,7 @@ def extract_chips_from_raster(
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
-            if type == "tif":
+            if chip_type == "tif":
                 image_was_saved = write_tif(
                     img,
                     img_path,
@@ -452,12 +452,18 @@ def extract_chips_from_raster(
                             distance_mask_path=distance_mask_path,
                             label_property=label_property,
                         )
+                    else:
+                        raise RuntimeError(f"mask type '{mask_type}' not supported")
 
         if write_footprints:
             geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
             _logger.info("Write chips footprints GeoJSON at %s", geojson_path)
             write_chips_geojson(
-                geojson_path, chips, type=type, crs=str(meta["crs"]), basename=basename
+                geojson_path,
+                chips,
+                chip_type=chip_type,
+                crs=str(meta["crs"]),
+                basename=basename,
             )
 
 
