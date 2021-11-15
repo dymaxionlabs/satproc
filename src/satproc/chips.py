@@ -1,14 +1,11 @@
 import logging
 import os
 
-import cv2
-
 # Workaround: Load fiona at the end to avoid segfault on box (???)
 import fiona
 import numpy as np
 import rasterio
 from rasterio.crs import CRS
-from rasterio.features import rasterize
 from shapely.geometry import box, shape
 from shapely.ops import unary_union
 from skimage import exposure
@@ -16,6 +13,7 @@ from skimage.io import imsave
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
+from satproc.masks import multiband_chip_mask_by_classes, prepare_label_shapes
 from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
 
 __author__ = "Damián Silvani"
@@ -23,192 +21,6 @@ __copyright__ = "Dymaxion Labs"
 __license__ = "Apache-2.0"
 
 _logger = logging.getLogger(__name__)
-
-
-def get_shape(feature):
-    """Get shape geometry from feature
-
-    Parameters
-    ----------
-    feature : dict
-        Feature as read from Fiona
-
-    Returns
-    -------
-    shapely.geometry.BaseGeometry
-
-    """
-    geom = feature["geometry"]
-    try:
-        return shape(geom)
-    except Exception as err:
-        _logger.warn("Failed to get shape from feature %s: %s", feature, err)
-        return None
-
-
-def mask_from_polygons(polygons, *, win, t, boundary_mask=None, distance_mask=None):
-    """Generate a binary mask array from a set of polygon
-
-    It can also generate a distance transform mask
-
-    Parameters
-    ----------
-    polygons : List[Union[Polygon, MultiPolygon]]
-        list of polygon or multipolygon geometries
-    win : rasterio.windows.Window
-        window
-    t : rasterio.transform.Affine
-        affine transform
-    boundary_mask : bool
-        whether to generate boundary (edges) mask
-    distance_mask : bool
-        whether to generate a distance mask
-
-    Returns
-    -------
-    numpy.ndarray
-
-    """
-    transform = rasterio.windows.transform(win, t)
-    bound_mask, dist_mask = None, None
-
-    if polygons is None or len(polygons) == 0:
-        mask = np.zeros((win.height, win.width), dtype=np.uint8)
-        if boundary_mask:
-            bound_mask = mask.copy()
-        if distance_mask:
-            dist_mask = mask.copy()
-        return mask, bound_mask, dist_mask
-
-    mask = rasterize(
-        polygons, (win.height, win.width), default_value=255, transform=transform
-    )
-    if boundary_mask or distance_mask:
-        lines = _get_linestrings_from_polygons(polygons)
-        bound_mask = rasterize(
-            lines, (win.height, win.width), default_value=255, transform=transform
-        )
-        if distance_mask:
-            mask_no_bounds = mask - bound_mask
-            dist_mask = cv2.distanceTransform(mask_no_bounds, cv2.DIST_L2, 3).astype(
-                np.uint8
-            )
-    return mask, bound_mask, dist_mask
-
-
-def _get_linestrings_from_polygons(polys):
-    for poly in polys:
-        boundary = poly.boundary
-        if boundary.type == "MultiLineString":
-            for line in boundary:
-                yield line
-        else:
-            yield boundary
-
-
-def multiband_chip_mask_by_classes(
-    classes,
-    transform,
-    window,
-    mask_path,
-    label_property,
-    polys_dict=None,
-    label_path=None,
-    window_shape=None,
-    boundary_mask=False,
-    boundary_mask_path=None,
-    distance_mask=False,
-    distance_mask_path=None,
-    metadata={},
-):
-    multi_band_mask = []
-    boundary_multi_band_mask = []
-    distance_multi_band_mask = []
-
-    if polys_dict is None and label_path is not None:
-        polys_dict = classify_polygons(label_path, label_property, classes)
-    if window_shape is None:
-        window_shape = box(*rasterio.windows.bounds(window, transform))
-
-    for k in classes:
-        mask, bound_mask, dist_mask = mask_from_polygons(
-            polys_dict[k],
-            win=window,
-            t=transform,
-            boundary_mask=boundary_mask,
-            distance_mask=distance_mask,
-        )
-        multi_band_mask.append(mask)
-        if distance_mask:
-            distance_multi_band_mask.append(dist_mask)
-        if boundary_mask:
-            boundary_multi_band_mask.append(bound_mask)
-
-    for mask_bands, mask_path in zip(
-        [multi_band_mask, boundary_multi_band_mask, distance_multi_band_mask],
-        [mask_path, boundary_mask_path, distance_mask_path],
-    ):
-        if mask_bands:
-            kwargs = metadata.copy()
-            kwargs.update(
-                driver="GTiff",
-                dtype=rasterio.uint8,
-                count=len(mask_bands),
-                nodata=0,
-                transform=rasterio.windows.transform(window, transform),
-                width=window.width,
-                height=window.height,
-            )
-
-            os.makedirs(os.path.dirname(mask_path), exist_ok=True)
-            with rasterio.open(mask_path, "w", **kwargs) as dst:
-                for i in range(len(mask_bands)):
-                    dst.write(mask_bands[i], i + 1)
-
-
-def classify_polygons(labels, label_property, classes):
-    with fiona.open(labels) as blocks:
-        polys_dict = {}
-        for block in blocks:
-            if label_property in block["properties"]:
-                c = str(block["properties"][label_property])
-                try:
-                    geom = shape(block["geometry"])
-                except RuntimeError:
-                    _logger.warning(
-                        "Failed to get geometry shape for feature: %s", block
-                    )
-                    continue
-                if c in polys_dict:
-                    polys_dict[c].append(geom)
-                else:
-                    polys_dict[c] = [geom]
-    if classes:
-        for c in classes:
-            if c not in polys_dict:
-                polys_dict[c] = []
-                _logger.warn(
-                    f"No features of class '{c}' found. Will generate empty masks."
-                )
-    return polys_dict
-
-
-def prepare_aoi_shape(aoi):
-    with fiona.open(aoi) as src:
-        aoi_polys = [get_shape(f) for f in src]
-        aoi_polys = [shp for shp in aoi_polys if shp and shp.is_valid]
-        aoi_poly = unary_union(aoi_polys)
-        return aoi_poly
-
-
-def prepare_label_shapes(
-    labels, mask_type="class", label_property="class", classes=None
-):
-    if mask_type == "class":
-        polys_dict = classify_polygons(labels, label_property, classes)
-        return polys_dict
-    else:
-        raise RuntimeError(f"mask type '{mask_type}' not supported")
 
 
 def extract_chips(
@@ -371,19 +183,16 @@ def extract_chips_from_raster(
         ):
             _logger.debug("%s %s", window, (i, j))
 
-            img_path = os.path.join(image_folder, f"{basename}_{i}_{j}.{chip_type}")
-            mask_path = os.path.join(masks_folder, f"{basename}_{i}_{j}.{chip_type}")
-            boundary_mask_path = os.path.join(
-                boundary_masks_folder, f"{basename}_{i}_{j}.{chip_type}"
-            )
-            distance_mask_path = os.path.join(
-                distance_masks_folder, f"{basename}_{i}_{j}.{chip_type}"
-            )
+            name = f"{basename}_{i}_{j}.{chip_type}"
+            img_path = os.path.join(image_folder, name)
+            extent_mask_path = os.path.join(masks_folder, name)
+            boundary_mask_path = os.path.join(boundary_masks_folder, name)
+            distance_mask_path = os.path.join(distance_masks_folder, name)
 
             # Gather list of required files
             required_files = {img_path}
             if labels:
-                required_files.add(mask_path)
+                required_files.add(extent_mask_path)
                 if boundary_mask:
                     required_files.add(boundary_mask_path)
                 if distance_mask:
@@ -428,13 +237,10 @@ def extract_chips_from_raster(
                             classes=keys,
                             transform=ds.transform,
                             window=window,
-                            window_shape=win_shape,
                             polys_dict=polys_dict,
                             metadata=meta,
-                            mask_path=mask_path,
-                            boundary_mask=boundary_mask,
+                            extent_mask_path=extent_mask_path,
                             boundary_mask_path=boundary_mask_path,
-                            distance_mask=distance_mask,
                             distance_mask_path=distance_mask_path,
                             label_property=label_property,
                         )
@@ -480,3 +286,32 @@ def write_tif(img, path, *, skip_low_contrast=False, window, meta, transform, ba
     with rasterio.open(path, "w", **meta) as dst:
         dst.write(img)
     return True
+
+
+def get_shape(feature):
+    """Get shape geometry from feature
+
+    Parameters
+    ----------
+    feature : dict
+        Feature as read from Fiona
+
+    Returns
+    -------
+    shapely.geometry.BaseGeometry
+
+    """
+    geom = feature["geometry"]
+    try:
+        return shape(geom)
+    except Exception as err:
+        _logger.warn("Failed to get shape from feature %s: %s", feature, err)
+        return None
+
+
+def prepare_aoi_shape(aoi):
+    with fiona.open(aoi) as src:
+        aoi_polys = [get_shape(f) for f in src]
+        aoi_polys = [shp for shp in aoi_polys if shp and shp.is_valid]
+        aoi_poly = unary_union(aoi_polys)
+        return aoi_poly
