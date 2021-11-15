@@ -168,10 +168,11 @@ def extract_chips_from_raster(
             # If rescaling, set nodata=0 (will rescale to uint8 1-255)
             meta["nodata"] = 0
 
-        basename = os.path.basename(raster)
         chips = []
         for c, ((window, (i, j)), win_shape) in tqdm(
-            list(enumerate(window_and_shapes)), desc=f"{basename} windows", ascii=True
+            list(enumerate(window_and_shapes)),
+            desc=f"{os.path.basename(raster)} windows",
+            ascii=True,
         ):
             _logger.debug("%s %s", window, (i, j))
 
