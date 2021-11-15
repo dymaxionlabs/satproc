@@ -68,33 +68,14 @@ def parse_args(args):
         "--classes", nargs="+", type=str, help="specify classes order in result mask."
     )
     parser.add_argument(
+        "--masks",
+        "-m",
+        nargs="+",
+        choices=["extent", "boundary", "distance"],
+        default={"extent"},
+    )
+    parser.add_argument(
         "--mask-type", choices=["single", "class", "instance"], default="class"
-    )
-    parser.add_argument(
-        "--boundary-mask",
-        dest="boundary_mask",
-        action="store_true",
-        default=False,
-        help="generate boundary mask",
-    )
-    parser.add_argument(
-        "--no-boundary-mask",
-        dest="boundary_mask",
-        action="store_false",
-        help="do not generate boundary mask",
-    )
-    parser.add_argument(
-        "--distance-mask",
-        dest="distance_mask",
-        action="store_true",
-        default=False,
-        help="generate distance mask",
-    )
-    parser.add_argument(
-        "--no-distance-mask",
-        dest="distance_mask",
-        action="store_false",
-        help="do not generate distance mask",
     )
     parser.add_argument("--aoi", help="Filter by AOI vector file")
     parser.add_argument(
@@ -296,9 +277,8 @@ def main(args):
         aoi=args.aoi,
         labels=args.labels,
         label_property=args.label_property,
+        masks=args.masks,
         mask_type=args.mask_type,
-        boundary_mask=args.boundary_mask,
-        distance_mask=args.distance_mask,
         rescale_mode=rescale_mode,
         rescale_range=rescale_range,
         bands=bands,

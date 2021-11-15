@@ -28,9 +28,8 @@ def extract_chips(
     aoi=None,
     labels=None,
     label_property="class",
+    masks={"extent"},
     mask_type="class",
-    boundary_mask=False,
-    distance_mask=False,
     rescale_mode=None,
     rescale_range=None,
     bands=None,
@@ -78,9 +77,8 @@ def extract_chips(
                 labels=labels,
                 label_property=label_property,
                 classes=classes,
+                masks=masks,
                 mask_type=mask_type,
-                boundary_mask=boundary_mask,
-                distance_mask=distance_mask,
                 aoi_poly=aoi_poly,
                 polys_dict=polys_dict,
                 windows_mode=windows_mode,
@@ -99,6 +97,7 @@ def extract_chips_from_raster(
     labels=None,
     label_property="class",
     mask_type="class",
+    masks={"extent"},
     classes=None,
     crs=None,
     skip_existing=True,
@@ -106,8 +105,6 @@ def extract_chips_from_raster(
     aoi_poly=None,
     polys_dict=None,
     windows_mode="whole_overlap",
-    boundary_mask=False,
-    distance_mask=False,
     skip_low_contrast=False,
     *,
     size,
@@ -119,11 +116,6 @@ def extract_chips_from_raster(
         _logger.info("Will skip existing files")
 
     basename, _ = os.path.splitext(os.path.basename(raster))
-
-    image_folder = os.path.join(output_dir, "images")
-    masks_folder = os.path.join(output_dir, "masks")
-    boundary_masks_folder = os.path.join(output_dir, "boundaries")
-    distance_masks_folder = os.path.join(output_dir, "distances")
 
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
@@ -184,19 +176,13 @@ def extract_chips_from_raster(
             _logger.debug("%s %s", window, (i, j))
 
             name = f"{basename}_{i}_{j}.{chip_type}"
-            img_path = os.path.join(image_folder, name)
-            extent_mask_path = os.path.join(masks_folder, name)
-            boundary_mask_path = os.path.join(boundary_masks_folder, name)
-            distance_mask_path = os.path.join(distance_masks_folder, name)
+            img_path = os.path.join(output_dir, "images", name)
+            mask_paths = {kind: os.path.join(output_dir, kind, name) for kind in masks}
 
             # Gather list of required files
             required_files = {img_path}
             if labels:
-                required_files.add(extent_mask_path)
-                if boundary_mask:
-                    required_files.add(boundary_mask_path)
-                if distance_mask:
-                    required_files.add(distance_mask_path)
+                required_files = required_files | set(mask_paths.values())
 
             # If all files already exist and we are skipping existing files, continue
             if skip_existing and all(os.path.exists(p) for p in required_files):
@@ -239,9 +225,9 @@ def extract_chips_from_raster(
                             window=window,
                             polys_dict=polys_dict,
                             metadata=meta,
-                            extent_mask_path=extent_mask_path,
-                            boundary_mask_path=boundary_mask_path,
-                            distance_mask_path=distance_mask_path,
+                            extent_mask_path=mask_paths.get("extent"),
+                            boundary_mask_path=mask_paths.get("boundary"),
+                            distance_mask_path=mask_paths.get("distance"),
                             label_property=label_property,
                         )
                     else:
