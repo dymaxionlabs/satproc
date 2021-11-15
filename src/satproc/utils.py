@@ -196,7 +196,7 @@ def calculate_raster_percentiles(
         return res
 
 
-def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
+def write_chips_geojson(output_path, chip_pairs, *, chip_type, crs, basename):
     """Write a GeoJSON containing chips polygons as features
 
     Parameters
@@ -205,7 +205,7 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
         GeoJSON output path
     chip_pairs : Tuple[Shape, Tuple[int, int, int]]
         a pair with the chip polygon geometry, and a tuple of (feature id, x, y)
-    type : str
+    chip_type : str
         chip file type extension (e.g. tif, jpg)
     crs : str
         CRS epsg code of chip polygon geometry
@@ -233,7 +233,7 @@ def write_chips_geojson(output_path, chip_pairs, *, type, crs, basename):
                 "properties": {"name": f"urn:ogc:def:crs:EPSG::{code}"},
             }
         for i, (chip, (_fi, xi, yi)) in enumerate(chip_pairs):
-            filename = f"{basename}_{xi}_{yi}.{type}"
+            filename = f"{basename}_{xi}_{yi}.{chip_type}"
             feature = {
                 "type": "Feature",
                 "geometry": mapping(chip),
