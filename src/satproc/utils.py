@@ -7,10 +7,16 @@ import subprocess
 from itertools import zip_longest
 from multiprocessing.pool import ThreadPool
 
+import fiona
 import numpy as np
+import pyproj
 import rasterio
+from packaging import version
+from pyproj.crs import CRS
+from pyproj.enums import WktVersion
 from rasterio.windows import Window
 from shapely.geometry import mapping
+from shapely.ops import transform
 from skimage import exposure
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -259,6 +265,48 @@ def get_raster_band_count(path):
     """
     with rasterio.open(path) as src:
         return src.count
+
+
+def reproject_shape(shp, from_crs, to_crs, project=None):
+    """Reproject a shape from `from_crs` to `to_crs`
+
+    Parameters
+    ----------
+    shp : Shape
+        shape to reproject
+    from_crs : str
+        CRS epsg code of shape geometry
+    to_crs : str
+        CRS epsg code of reprojected shape geometry
+    project : Optional[str]
+        a Transformer instance to use for reprojection
+
+    Returns
+    -------
+    Shape
+        reprojected shape
+
+    """
+    if from_crs == to_crs:
+        return shp
+    if project is None:
+        project = pyproj.Transformer.from_crs(
+            from_crs, to_crs, always_xy=True
+        ).transform
+    return transform(project, shp)
+
+
+def proj_crs_from_fiona_dataset(fio_ds):
+    return CRS.from_wkt(fio_ds.crs_wkt)
+
+
+def fiona_crs_from_proj_crs(proj_crs):
+    if version.parse(fiona.__gdal_version__) < version.parse("3.0.0"):
+        fio_crs = proj_crs.to_wkt(WktVersion.WKT1_GDAL)
+    else:
+        # GDAL 3+ can use WKT2
+        fio_crs = proj_crs.to_wkt()
+    return fio_crs
 
 
 def run_command(cmd, quiet=True):
