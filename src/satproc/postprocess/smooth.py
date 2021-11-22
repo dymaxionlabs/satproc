@@ -11,10 +11,9 @@ import rasterio.merge
 import rasterio.windows
 import scipy.signal
 from rasterio.transform import Affine
-from rasterio.windows import Window
 from rtree import index
-from shapely.geometry import box
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -59,24 +58,26 @@ def generate_spline_window_chips(*, image_paths, output_dir):
     spline_window = window_2D(size=chip_size, power=2, n_channels=n_channels)
 
     res = []
-    for img_path in tqdm(image_paths):
-        with rasterio.open(img_path) as src:
-            profile = src.profile.copy()
-            img = src.read()
+    with logging_redirect_tqdm():
+        for img_path in tqdm(image_paths, ascii=True, desc="Smooth chips"):
+            with rasterio.open(img_path) as src:
+                profile = src.profile.copy()
+                img = src.read()
 
-        img = (img * spline_window).astype(np.uint8)
+            img = (img * spline_window).astype(np.uint8)
 
-        out_path = os.path.join(output_dir, os.path.basename(img_path))
-        os.makedirs(output_dir, exist_ok=True)
-        res.append(out_path)
-        with rasterio.open(out_path, "w", **profile) as dst:
-            for i in range(img.shape[0]):
-                dst.write(img[i, :, :], i + 1)
+            out_path = os.path.join(output_dir, os.path.basename(img_path))
+            os.makedirs(output_dir, exist_ok=True)
+            res.append(out_path)
+            with rasterio.open(out_path, "w", **profile) as dst:
+                for i in range(img.shape[0]):
+                    dst.write(img[i, :, :], i + 1)
 
     return res
 
 
-# Based on 'max' method from https://github.com/mapbox/rasterio/blob/master/rasterio/merge.py
+# Based on 'max' method from
+# https://github.com/mapbox/rasterio/blob/master/rasterio/merge.py
 def mean_merge_method(
     old_data, new_data, old_nodata, new_nodata, index=None, roff=None, coff=None
 ):
@@ -92,12 +93,15 @@ def build_bounds_index(image_files):
     idx = index.Index()
     xs = []
     ys = []
-    for i, img_path in tqdm(list(enumerate(image_files))):
-        with rasterio.open(img_path) as src:
-            left, bottom, right, top = src.bounds
-        xs.extend([left, right])
-        ys.extend([bottom, top])
-        idx.insert(i, (left, bottom, right, top))
+    with logging_redirect_tqdm():
+        for i, img_path in tqdm(
+            list(enumerate(image_files)), ascii=True, desc="Build bounds R-Tree index"
+        ):
+            with rasterio.open(img_path) as src:
+                left, bottom, right, top = src.bounds
+            xs.extend([left, right])
+            ys.extend([bottom, top])
+            idx.insert(i, (left, bottom, right, top))
     dst_w, dst_s, dst_e, dst_n = min(xs), min(ys), max(xs), max(ys)
     return idx, (dst_w, dst_s, dst_e, dst_n)
 
@@ -172,25 +176,26 @@ def smooth_stitch(*, input_dir, output_dir):
         )
         logger.info("Num. windows: %d", len(windows))
 
-        for win, (i, j) in tqdm(windows):
-            # Get window affine transform and bounds
-            win_transform = rasterio.windows.transform(win, output_transform)
-            win_bounds = rasterio.windows.bounds(win, output_transform)
+        with logging_redirect_tqdm():
+            for win, (i, j) in tqdm(windows, ascii=True, desc="Merge chips"):
+                # Get window affine transform and bounds
+                win_transform = rasterio.windows.transform(win, output_transform)
+                win_bounds = rasterio.windows.bounds(win, output_transform)
 
-            # Get chips that intersect with window
-            intersect_chip_paths = [
-                tmp_image_paths[i] for i in idx.intersection(win_bounds)
-            ]
+                # Get chips that intersect with window
+                intersect_chip_paths = [
+                    tmp_image_paths[i] for i in idx.intersection(win_bounds)
+                ]
 
-            if intersect_chip_paths:
-                # Merge them with median method
-                img = merge_chips(intersect_chip_paths, win_bounds=win_bounds)
+                if intersect_chip_paths:
+                    # Merge them with median method
+                    img = merge_chips(intersect_chip_paths, win_bounds=win_bounds)
 
-                # Write output chip
-                profile.update(transform=win_transform)
-                output_path = os.path.join(output_dir, f"{i}_{j}.tif")
+                    # Write output chip
+                    profile.update(transform=win_transform)
+                    output_path = os.path.join(output_dir, f"{i}_{j}.tif")
 
-                os.makedirs(output_dir, exist_ok=True)
-                with rasterio.open(output_path, "w", **profile) as dst:
-                    for i in range(img.shape[0]):
-                        dst.write(img[i, :, :], i + 1)
+                    os.makedirs(output_dir, exist_ok=True)
+                    with rasterio.open(output_path, "w", **profile) as dst:
+                        for i in range(img.shape[0]):
+                            dst.write(img[i, :, :], i + 1)

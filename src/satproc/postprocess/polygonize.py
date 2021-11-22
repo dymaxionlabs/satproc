@@ -5,6 +5,7 @@ from functools import partial
 from glob import glob
 
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from satproc.utils import grouper, map_with_threads, run_command
 
@@ -79,13 +80,14 @@ def merge_vector_files(*, input_dir, output, tmpdir):
     # First, merge groups of vector files using ogrmerge.py in parallel
     output_dir = os.path.join(tmpdir, "temp")
     worker = partial(merge_chip_vector_files, output_dir=output_dir)
-    map_with_threads(src_groups, worker)
+    map_with_threads(src_groups, worker, desc="Merge chips into groups")
 
     # Second, merge ogrmerge results using ogr2ogr into a single file
     group_paths = glob(os.path.join(groups_dir, "*.gpkg"))
     os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
-    for src in tqdm(group_paths):
-        run_command(f"ogr2ogr -f GPKG -update -append {output} {src}", quiet=False)
+    with logging_redirect_tqdm():
+        for src in tqdm(group_paths, ascii=True, desc="Merge groups"):
+            run_command(f"ogr2ogr -f GPKG -update -append {output} {src}", quiet=False)
 
 
 def retile_all(input_files, tile_size, temp_dir):
@@ -144,7 +146,7 @@ def polygonize(
 
     # Process all chip images
     worker = partial(process_image, tmpdir=temp_dir, threshold=threshold, value=value)
-    map_with_threads(input_files, worker)
+    map_with_threads(input_files, worker, desc="Polygonize chips")
 
     # Merge all vector files into a single one
     merge_vector_files(input_dir=temp_dir, output=output, tmpdir=temp_dir)

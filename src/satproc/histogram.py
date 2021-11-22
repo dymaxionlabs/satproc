@@ -4,6 +4,7 @@ import numpy as np
 import rasterio
 from skimage import exposure
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from satproc.utils import sliding_windows
 
@@ -95,13 +96,16 @@ def match_histograms(src_path, dst_path, size=128, step_size=128, *, reference_p
 
         with rasterio.open(reference_path) as ref:
             with rasterio.open(dst_path, "w", **profile) as dst:
-                for c, (win, (i, j)) in tqdm(list(enumerate(windows))):
-                    _logger.debug("%s %s", win, (i, j))
+                with logging_redirect_tqdm():
+                    for c, (win, (i, j)) in tqdm(
+                        list(enumerate(windows)), ascii=True, desc="Match histograms"
+                    ):
+                        _logger.debug("%s %s", win, (i, j))
 
-                    img = read_window(src, win)
-                    ref_img = read_window(ref, win)
+                        img = read_window(src, win)
+                        ref_img = read_window(ref, win)
 
-                    matched_img = exposure.match_histograms(
-                        img, ref_img, multichannel=True
-                    )
-                    write_window(matched_img, dst, win)
+                        matched_img = exposure.match_histograms(
+                            img, ref_img, multichannel=True
+                        )
+                        write_window(matched_img, dst, win)

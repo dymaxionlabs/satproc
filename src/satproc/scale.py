@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import rasterio
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from satproc.utils import sliding_windows
 
@@ -33,10 +34,17 @@ def get_min_max(img, window_size=512):
     with rasterio.open(img) as src:
         win_size = (window_size, window_size)
         windows = list(sliding_windows(win_size, win_size, src.width, src.height))
-        for _, (window, (i, j)) in tqdm(list(enumerate(windows))):
-            img = src.read(window=window)
-            mins.append(np.array([np.nanmin(img[i, :, :]) for i in range(src.count)]))
-            maxs.append(np.array([np.nanmax(img[i, :, :]) for i in range(src.count)]))
+        with logging_redirect_tqdm():
+            for _, (window, (i, j)) in tqdm(
+                list(enumerate(windows)), desc="Get min-max", ascii=True
+            ):
+                img = src.read(window=window)
+                mins.append(
+                    np.array([np.nanmin(img[i, :, :]) for i in range(src.count)])
+                )
+                maxs.append(
+                    np.array([np.nanmax(img[i, :, :]) for i in range(src.count)])
+                )
     min_value = np.nanmin(np.array(mins), axis=0)
     max_value = np.nanmax(np.array(maxs), axis=0)
     return min_value, max_value
@@ -96,10 +104,13 @@ def scale(input_img, output_img, window_size=512):
         profile = src.profile.copy()
         profile.update(dtype=np.float32)
         with rasterio.open(output_img, "w", **profile) as dst:
-            for _, (window, (i, j)) in tqdm(list(enumerate(windows))):
-                _logger.debug("%s %s", window, (i, j))
-                img = src.read(window=window)
-                new_img = minmax_scale(
-                    img, min_values=min_values, max_values=max_values
-                )
-                dst.write(new_img, window=window)
+            with logging_redirect_tqdm():
+                for _, (window, (i, j)) in tqdm(
+                    list(enumerate(windows)), ascii=True, desc="Scale"
+                ):
+                    _logger.debug("%s %s", window, (i, j))
+                    img = src.read(window=window)
+                    new_img = minmax_scale(
+                        img, min_values=min_values, max_values=max_values
+                    )
+                    dst.write(new_img, window=window)

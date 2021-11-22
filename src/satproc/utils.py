@@ -281,7 +281,7 @@ def run_command(cmd, quiet=True):
     subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)
 
 
-def map_with_threads(items, worker, num_jobs=None, total=None):
+def map_with_threads(items, worker, num_jobs=None, total=None, desc=None):
     """Map a worker function to an iterable of items, using a thread pool
 
     Parameters
@@ -294,6 +294,8 @@ def map_with_threads(items, worker, num_jobs=None, total=None):
         number of threads to use
     total : int (optional)
         total number of items (for the progress bar)
+    desc : str (optional)
+        description of the task (for the progress bar)
 
     Returns
     -------
@@ -306,6 +308,6 @@ def map_with_threads(items, worker, num_jobs=None, total=None):
         num_jobs = mp.cpu_count()
     with ThreadPool(num_jobs) as pool:
         with logging_redirect_tqdm():
-            with tqdm(total=len(items), ascii=True) as pbar:
+            with tqdm(total=len(items), ascii=True, desc=desc) as pbar:
                 for _ in enumerate(pool.imap_unordered(worker, items)):
                     pbar.update()
