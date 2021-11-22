@@ -63,6 +63,11 @@ def parse_args(args):
     parser.add_argument(
         "--classes", nargs="+", type=str, help="specify classes order in result mask."
     )
+    parser.add_argument(
+        "--extent-no-border",
+        action="store_true",
+        help="do not include border in extent mask",
+    )
     parser.add_argument("-o", "--output-dir", help="output dir", default=".")
 
     parser.add_argument(
@@ -116,6 +121,7 @@ def main(args):
         labels=args.labels,
         label_property=args.label_property,
         classes=args.classes,
+        extent_no_border=args.extent_no_border,
     )
 
 

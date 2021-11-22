@@ -30,6 +30,7 @@ def extract_chips(
     label_property="class",
     masks={"extent"},
     mask_type="class",
+    extent_no_border=False,
     rescale_mode=None,
     rescale_range=None,
     bands=None,
@@ -79,6 +80,7 @@ def extract_chips(
                 classes=classes,
                 masks=masks,
                 mask_type=mask_type,
+                extent_no_border=extent_no_border,
                 aoi_poly=aoi_poly,
                 polys_dict=polys_dict,
                 windows_mode=windows_mode,
@@ -106,11 +108,19 @@ def extract_chips_from_raster(
     polys_dict=None,
     windows_mode="whole_overlap",
     skip_low_contrast=False,
+    extent_no_border=False,
     *,
     size,
     step_size,
     output_dir,
 ):
+    if extent_no_border and "extent" not in masks:
+        _logger.warn(
+            (
+                "You specified `no_border` option but will be ignored "
+                "(no `extent` mask specified)"
+            )
+        )
 
     if skip_existing:
         _logger.info("Will skip existing files")
@@ -230,6 +240,7 @@ def extract_chips_from_raster(
                             boundary_mask_path=mask_paths.get("boundary"),
                             distance_mask_path=mask_paths.get("distance"),
                             label_property=label_property,
+                            extent_no_border=extent_no_border,
                         )
                     else:
                         raise RuntimeError(f"mask type '{mask_type}' not supported")

@@ -26,9 +26,18 @@ def make_masks(
     classes=None,
     mask_type="class",
     masks={"extent"},
+    extent_no_border=False,
 ):
     if mask_type != "class":
         raise RuntimeError(f"mask type '{mask_type}' not implemented")
+
+    if extent_no_border and "extent" not in masks:
+        _logger.warn(
+            (
+                "You specified `no_border` option but will be ignored "
+                "(no `extent` mask specified)"
+            )
+        )
 
     polys_dict = classify_polygons(labels, label_property, classes)
 
@@ -63,6 +72,7 @@ def make_masks(
                 polys_dict=polys_dict,
                 metadata=profile,
                 label_property=label_property,
+                extent_no_border=extent_no_border,
                 extent_mask_path=paths.get("extent"),
                 boundary_mask_path=paths.get("boundary"),
                 distance_mask_path=paths.get("distance"),
@@ -79,6 +89,7 @@ def multiband_chip_mask_by_classes(
     extent_mask_path=None,
     boundary_mask_path=None,
     distance_mask_path=None,
+    extent_no_border=False,
     metadata={},
 ):
     mb_extent, mb_boundary, mb_distance = [], [], []
@@ -91,6 +102,7 @@ def multiband_chip_mask_by_classes(
             polys_dict[k],
             win=window,
             t=transform,
+            extent_no_border=extent_no_border,
             boundary_mask=boundary_mask_path,
             distance_mask=distance_mask_path,
         )
@@ -120,7 +132,15 @@ def multiband_chip_mask_by_classes(
                     dst.write(mask_bands[i], i + 1)
 
 
-def mask_from_polygons(polygons, *, win, t, boundary_mask=None, distance_mask=None):
+def mask_from_polygons(
+    polygons,
+    *,
+    win,
+    t,
+    extent_no_border=True,
+    boundary_mask=None,
+    distance_mask=None,
+):
     """Generate a binary mask array from a set of polygon
 
     It can also generate a distance transform mask
@@ -133,6 +153,8 @@ def mask_from_polygons(polygons, *, win, t, boundary_mask=None, distance_mask=No
         window
     t : rasterio.transform.Affine
         affine transform
+    extent_no_border : bool
+        if True, the extent mask will not include the border of the polygon
     boundary_mask : bool
         whether to generate boundary (edges) mask
     distance_mask : bool
@@ -155,15 +177,24 @@ def mask_from_polygons(polygons, *, win, t, boundary_mask=None, distance_mask=No
             dist_mask = mask.copy()
         return mask, bound_mask, dist_mask
 
-    mask = rasterize(polygons, win_shape, default_value=255, transform=transform)
-    if boundary_mask or distance_mask:
+    mask = rasterize(
+        polygons,
+        win_shape,
+        default_value=255,
+        transform=transform,
+    )
+    if boundary_mask or distance_mask or extent_no_border:
         lines = _get_linestrings_from_polygons(polygons)
         bound_mask = rasterize(lines, win_shape, default_value=255, transform=transform)
-        if distance_mask:
-            mask_no_bounds = mask - bound_mask
-            dist_mask = cv2.distanceTransform(mask_no_bounds, cv2.DIST_L2, 3).astype(
-                np.uint8
-            )
+        if extent_no_border or distance_mask:
+            mask_no_bounds = mask.copy()
+            mask_no_bounds[bound_mask != 0] = 0
+            if extent_no_border:
+                mask = mask_no_bounds
+            if distance_mask:
+                dist_mask = cv2.distanceTransform(
+                    mask_no_bounds, cv2.DIST_L2, 3
+                ).astype(np.uint8)
     return mask, bound_mask, dist_mask
 
 

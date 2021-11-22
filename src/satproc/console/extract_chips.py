@@ -195,6 +195,11 @@ def parse_args(args):
         action="store_false",
         help="do not skip image chips with low contrast",
     )
+    parser.add_argument(
+        "--extent-no-border",
+        action="store_true",
+        help="do not include border in extent mask",
+    )
 
     parser.add_argument(
         "--version", action="version", version="satproc {ver}".format(ver=__version__)
@@ -279,6 +284,7 @@ def main(args):
         label_property=args.label_property,
         masks=args.masks,
         mask_type=args.mask_type,
+        extent_no_border=args.extent_no_border,
         rescale_mode=rescale_mode,
         rescale_range=rescale_range,
         bands=bands,
