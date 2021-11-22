@@ -4,6 +4,9 @@ import tempfile
 from functools import partial
 from glob import glob
 
+import fiona
+from shapely.geometry import mapping, shape
+from shapely.ops import unary_union
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -84,10 +87,57 @@ def merge_vector_files(*, input_dir, output, tmpdir):
 
     # Second, merge ogrmerge results using ogr2ogr into a single file
     group_paths = glob(os.path.join(groups_dir, "*.gpkg"))
-    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+    merged_path = os.path.join(output_dir, "merged", os.path.basename(output))
+    os.makedirs(os.path.dirname(merged_path) or ".", exist_ok=True)
     with logging_redirect_tqdm():
         for src in tqdm(group_paths, ascii=True, desc="Merge groups"):
-            run_command(f"ogr2ogr -f GPKG -update -append {output} {src}", quiet=False)
+            run_command(
+                f"ogr2ogr -f GPKG -update -append {merged_path} {src}", quiet=False
+            )
+
+    # Third, dissolve the final vector file
+    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+    with fiona.open(merged_path) as src:
+        if len(src) == 0:
+            _logger.warn("No shapes. Will not write output file")
+            return
+        with fiona.open(output, "w", **src.meta) as dst:
+            all_shapes = list(
+                grouper(
+                    (
+                        shape(feat["geometry"]).buffer(0)
+                        for feat in tqdm(
+                            src, total=len(src), ascii=True, desc="Reading shapes"
+                        )
+                    ),
+                    n=10000,
+                )
+            )
+
+            single_shapes = []
+            for group_shapes in tqdm(all_shapes, ascii=True, desc="Dissolve"):
+                group_shapes = [s for s in group_shapes if s]
+                single_shape = unary_union(group_shapes)
+                single_shapes.append(single_shape)
+
+            _logger.info("Dissolve final shapes")
+            final_shape = unary_union(single_shapes)
+            props = {"DN": 255}
+            for s in _multipart_to_single_parts(final_shape):
+                dst.write({"geometry": mapping(s), "properties": props})
+    _logger.info("%s written", output)
+
+
+def _multipart_to_single_parts(shp):
+    if shp.type == "MultiPolygon":
+        for s in shp.geoms:
+            yield s
+    elif shp.type == "Polygon":
+        yield shp
+    else:
+        raise RuntimeError(
+            f"shape should be a Polygon or MultiPolygon but was {shp.type}"
+        )
 
 
 def retile_all(input_files, tile_size, temp_dir):
