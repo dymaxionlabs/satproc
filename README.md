@@ -18,4 +18,4 @@ conduct.
 
 ## License
 
-This project is licensed under Apache 2.0. Refer to [LICENSE.txt](LICENSE.txt).
+This project is licensed under Apache 2.0. Refer to [LICENSE.txt](./LICENSE.txt).
