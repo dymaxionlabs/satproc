@@ -202,7 +202,7 @@ def _get_linestrings_from_polygons(polys):
     for poly in polys:
         boundary = poly.boundary
         if boundary.type == "MultiLineString":
-            for line in boundary:
+            for line in boundary.geoms:
                 yield line
         else:
             yield boundary
