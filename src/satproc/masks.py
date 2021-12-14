@@ -220,6 +220,7 @@ def prepare_label_shapes(
 
 def classify_polygons(labels, label_property, classes):
     with fiona.open(labels) as blocks:
+        _logger.info("Found %d labels on label file %s", len(blocks), labels)
         polys_dict = {}
         for block in blocks:
             if label_property in block["properties"]:
