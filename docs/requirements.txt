@@ -1,6 +1,7 @@
 # Requirements file for ReadTheDocs, check .readthedocs.yml.
 # To build the module reference correctly, make sure every external package
 # under `install_requires` in `setup.cfg` is also listed here!
-# sphinx_rtd_theme
-recommonmark
-sphinx>=3.2.1
+nbsphinx==0.8.7
+recommonmark==0.7.1
+sphinx==4.3.2
+sphinx_rtd_theme==1.0.0
