@@ -305,7 +305,7 @@ intersphinx_mapping = {
 # -- Notebooks ---------------------------------------------------------------
 
 notebooks_folder = "./examples"
-rst_files_with_notebooks = ["tutorials.md"]
+rst_files_with_notebooks = ["examples.md"]
 
 
 def copy_documentation_notebooks(source_folder, target_folder):
