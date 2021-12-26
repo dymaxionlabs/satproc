@@ -80,6 +80,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
+    "nbsphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -300,3 +301,32 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
     "pyscaffold": ("https://pyscaffold.org/en/stable", None),
 }
+
+# -- Notebooks ---------------------------------------------------------------
+
+notebooks_folder = "./examples"
+rst_files_with_notebooks = ["tutorials.md"]
+
+
+def copy_documentation_notebooks(source_folder, target_folder):
+    """Makes sure to copy only notebooks that are actually included in the documentation"""
+    notebooks_to_include = []
+
+    for rst_file in rst_files_with_notebooks:
+        with open(rst_file, "r") as fp:
+            content = fp.read()
+
+        for line in content.split("\n"):
+            line = line.strip(" \t")
+            if line.startswith("examples/"):
+                notebooks_to_include.append(line.split("/", 1)[1])
+
+    for notebook in notebooks_to_include:
+        source_path = os.path.join(source_folder, notebook)
+        target_path = os.path.join(target_folder, notebook)
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        shutil.copyfile(source_path, target_path)
+
+
+# shutil.rmtree(notebooks_folder, ignore_errors=True)
+copy_documentation_notebooks("../examples", notebooks_folder)
