@@ -1,18 +1,14 @@
-# satproc
-
-Process geospatial raster images for machine learning
-
-
+# Welcome to satproc documentation
 
 ## Contents
 
 * [Overview](readme)
 * [Installation](installation)
+* [Getting Started](getting-started)
 * [Usage Examples](examples)
 * [API Documentation](api/modules)
 * [Contributors](authors)
 * [Changelog](changelog)
-
 
 ## Indices and tables
 
