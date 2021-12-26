@@ -15,10 +15,7 @@
 # numpy==1.13.3
 # scipy==1.0
 #
-cython
 fiona
-git+git://github.com/waspinator/coco.git@2.1.0
-git+git://github.com/waspinator/pycococreator.git@0.2.0
 numpy
 opencv-python
 packaging
