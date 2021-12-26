@@ -16,11 +16,16 @@
 # scipy==1.0
 #
 cython
-numpy
+fiona
 git+git://github.com/waspinator/coco.git@2.1.0
 git+git://github.com/waspinator/pycococreator.git@0.2.0
-fiona
-pyproj==1.9.6
-rasterio
+numpy
+opencv-python
+packaging
+pyproj>=3
+rasterio>=1.2
 rtree
+scikit-image
 scipy
+shapely
+tqdm
