@@ -11,6 +11,11 @@ Python library and CLI tools for processing geospatial imagery for ML
 * [Stable](https://satproc.readthedocs.io/en/stable/)
 * [Latest](https://satproc.readthedocs.io/en/latest/)
 
+## Bugs / Questions
+
+* [Report bugs/feature requests](https://github.com/dymaxionlabs/satproc/issues)
+* [Ask questions](https://github.com/dymaxionlabs/satproc/discussions)
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at the [issues
