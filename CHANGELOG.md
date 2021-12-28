@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Do not skip low contrast images by default (#10)
 * Bugfix when using `--rescale` with values mode
 * Use tqdm in ASCII mode to be friendlier on log files
+* Pin pyproj>3 version
 
 ### Removed
 
