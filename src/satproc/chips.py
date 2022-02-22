@@ -13,7 +13,12 @@ from skimage.io import imsave
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from satproc.masks import multiband_chip_mask_by_classes, prepare_label_shapes
+from satproc.masks import (
+    all_masks_empty,
+    multiband_chip_mask_by_classes,
+    prepare_label_shapes,
+    write_window_masks,
+)
 from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
 
 __author__ = "Damián Silvani"
@@ -42,6 +47,7 @@ def extract_chips(
     within=False,
     windows_mode="whole_overlap",
     skip_low_contrast=False,
+    skip_with_empty_mask=True,
     *,
     size,
     step_size,
@@ -86,6 +92,7 @@ def extract_chips(
                 windows_mode=windows_mode,
                 skip_existing=skip_existing,
                 skip_low_contrast=skip_low_contrast,
+                skip_with_empty_mask=skip_with_empty_mask,
             )
 
 
@@ -108,6 +115,7 @@ def extract_chips_from_raster(
     polys_dict=None,
     windows_mode="whole_overlap",
     skip_low_contrast=False,
+    skip_with_empty_mask=True,
     extent_no_border=False,
     *,
     size,
@@ -206,8 +214,41 @@ def extract_chips_from_raster(
             if rescale_mode:
                 img = rescale_intensity(img, rescale_mode, rescale_range)
 
+            if skip_low_contrast and exposure.is_low_contrast(img):
+                continue
+
+            # Write mask file
+            if labels:
+                if mask_type != "class":
+                    raise RuntimeError(f"mask type '{mask_type}' not supported")
+
+                keys = classes if classes is not None else polys_dict.keys()
+                mask_imgs = multiband_chip_mask_by_classes(
+                    classes=keys,
+                    transform=ds.transform,
+                    window=window,
+                    polys_dict=polys_dict,
+                    extent_mask_path=mask_paths.get("extent"),
+                    boundary_mask_path=mask_paths.get("boundary"),
+                    distance_mask_path=mask_paths.get("distance"),
+                    label_property=label_property,
+                    extent_no_border=extent_no_border,
+                )
+
+                # If all masks are empty, skip this window
+                if skip_with_empty_mask and all_masks_empty(mask_imgs):
+                    continue
+
+                write_window_masks(
+                    mask_imgs, window=window, metadata=meta, transform=ds.transform
+                )
+
+            chip = (win_shape, (c, i, j))
+            chips.append(chip)
+
+            # Write image file
             if chip_type == "tif":
-                image_was_saved = write_tif(
+                write_tif(
                     img,
                     img_path,
                     window=window,
@@ -217,33 +258,11 @@ def extract_chips_from_raster(
                     skip_low_contrast=skip_low_contrast,
                 )
             else:
-                image_was_saved = write_image(
+                write_image(
                     img,
                     img_path,
                     skip_low_contrast=skip_low_contrast,
                 )
-
-            if image_was_saved:
-                chip = (win_shape, (c, i, j))
-                chips.append(chip)
-
-                if labels:
-                    if mask_type == "class":
-                        keys = classes if classes is not None else polys_dict.keys()
-                        multiband_chip_mask_by_classes(
-                            classes=keys,
-                            transform=ds.transform,
-                            window=window,
-                            polys_dict=polys_dict,
-                            metadata=meta,
-                            extent_mask_path=mask_paths.get("extent"),
-                            boundary_mask_path=mask_paths.get("boundary"),
-                            distance_mask_path=mask_paths.get("distance"),
-                            label_property=label_property,
-                            extent_no_border=extent_no_border,
-                        )
-                    else:
-                        raise RuntimeError(f"mask type '{mask_type}' not supported")
 
         if write_footprints:
             geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
@@ -267,8 +286,6 @@ def write_image(img, path, *, percentiles=None, skip_low_contrast=False):
 
 
 def write_tif(img, path, *, skip_low_contrast=False, window, meta, transform, bands):
-    if skip_low_contrast and exposure.is_low_contrast(img):
-        return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     meta.update(
         {

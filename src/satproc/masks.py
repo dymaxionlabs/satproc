@@ -65,17 +65,20 @@ def make_masks(
             }
             keys = classes if classes is not None else polys_dict.keys()
 
-            multiband_chip_mask_by_classes(
+            masks = multiband_chip_mask_by_classes(
                 classes=keys,
                 transform=transform,
                 window=window,
                 polys_dict=polys_dict,
-                metadata=profile,
                 label_property=label_property,
                 extent_no_border=extent_no_border,
                 extent_mask_path=paths.get("extent"),
                 boundary_mask_path=paths.get("boundary"),
                 distance_mask_path=paths.get("distance"),
+            )
+
+            write_window_masks(
+                masks, window=window, metadata=profile, transform=transform
             )
 
 
@@ -90,7 +93,6 @@ def multiband_chip_mask_by_classes(
     boundary_mask_path=None,
     distance_mask_path=None,
     extent_no_border=False,
-    metadata={},
 ):
     mb_extent, mb_boundary, mb_distance = [], [], []
 
@@ -110,26 +112,42 @@ def multiband_chip_mask_by_classes(
         mb_boundary.append(bound_mask)
         mb_distance.append(dist_mask)
 
-    for mask_bands, mask_path in zip(
+    masks = zip(
         [mb_extent, mb_boundary, mb_distance],
         [extent_mask_path, boundary_mask_path, distance_mask_path],
-    ):
-        if mask_path:
-            kwargs = metadata.copy()
-            kwargs.update(
-                driver="GTiff",
-                dtype=rasterio.uint8,
-                count=len(mask_bands),
-                nodata=0,
-                transform=rasterio.windows.transform(window, transform),
-                width=window.width,
-                height=window.height,
-            )
+    )
+    masks = [(path, mask) for mask, path in masks if path is not None]
 
-            os.makedirs(os.path.dirname(mask_path), exist_ok=True)
-            with rasterio.open(mask_path, "w", **kwargs) as dst:
-                for i in range(len(mask_bands)):
-                    dst.write(mask_bands[i], i + 1)
+    return masks
+
+
+def all_masks_empty(masks):
+    """Check if all masks are empty"""
+    for _, mask in masks:
+        for arr in mask:
+            if np.any(arr):
+                return False
+    return True
+
+
+def write_window_masks(masks, *, window, metadata, transform):
+    """Write window masks to files"""
+    for path, mask in masks:
+        kwargs = metadata.copy()
+        kwargs.update(
+            driver="GTiff",
+            dtype=rasterio.uint8,
+            count=len(mask),
+            nodata=0,
+            transform=rasterio.windows.transform(window, transform),
+            width=window.width,
+            height=window.height,
+        )
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with rasterio.open(path, "w", **kwargs) as dst:
+            for i in range(len(mask)):
+                dst.write(mask[i], i + 1)
 
 
 def mask_from_polygons(
