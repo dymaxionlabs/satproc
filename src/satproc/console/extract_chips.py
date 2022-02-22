@@ -196,6 +196,18 @@ def parse_args(args):
         help="do not skip image chips with low contrast",
     )
     parser.add_argument(
+        "--skip-with-empty-mask",
+        action="store_true",
+        default=True,
+        help="skip chips with empty mask",
+    )
+    parser.add_argument(
+        "--no-skip-with-empty-mask",
+        action="store_false",
+        dest="skip_with_empty_mask",
+        help="do not skip chips with empty mask",
+    )
+    parser.add_argument(
         "--extent-no-border",
         action="store_true",
         help="do not include border in extent mask",
@@ -295,6 +307,7 @@ def main(args):
         crs=args.crs,
         skip_existing=args.skip_existing,
         skip_low_contrast=args.skip_low_contrast,
+        skip_with_empty_mask=args.skip_with_empty_mask,
         size=args.size,
         step_size=args.step_size,
         windows_mode=args.sliding_windows_mode,
