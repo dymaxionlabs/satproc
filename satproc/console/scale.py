@@ -46,7 +46,7 @@ def parse_args(args):
     parser.add_argument(
         "--version",
         action="version",
-        version="satproc_scale {ver}".format(ver=__version__),
+        version="satproc {ver}".format(ver=__version__),
     )
 
     parser.add_argument("input", help="input raster file")

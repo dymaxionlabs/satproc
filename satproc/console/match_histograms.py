@@ -12,6 +12,7 @@ import argparse
 import logging
 import sys
 
+from satproc import __version__
 from satproc.histogram import match_histograms
 
 __author__ = "Damián Silvani"
@@ -33,6 +34,12 @@ def parse_args(args):
     parser = argparse.ArgumentParser(
         description="Match histograms between images",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="satproc {ver}".format(ver=__version__),
     )
 
     parser.add_argument("src", help="input raster")
