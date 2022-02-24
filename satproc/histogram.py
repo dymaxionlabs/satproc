@@ -105,7 +105,5 @@ def match_histograms(src_path, dst_path, size=128, step_size=128, *, reference_p
                         img = read_window(src, win)
                         ref_img = read_window(ref, win)
 
-                        matched_img = exposure.match_histograms(
-                            img, ref_img, multichannel=True
-                        )
+                        matched_img = exposure.match_histograms(img, ref_img)
                         write_window(matched_img, dst, win)
