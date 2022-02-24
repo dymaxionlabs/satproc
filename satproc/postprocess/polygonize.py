@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 
 
 def gdal_polygonize(src, dst):
-    run_command(f"gdal_polygonize.py {src} {dst}", quiet=False)
+    run_command(f"gdal_polygonize.py {src} {dst}")
 
 
 def apply_threshold(src, dst, value=None, *, threshold):
@@ -49,8 +49,7 @@ def apply_threshold(src, dst, value=None, *, threshold):
         f'--calc "(A >= {threshold}) * {value}" '
         f"-A {src} "
         "--NoDataValue 0 "
-        f"--outfile {dst}",
-        quiet=False,
+        f"--outfile {dst}"
     )
 
 
