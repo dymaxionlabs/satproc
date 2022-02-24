@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Apply histogram matching between two rasters.
+This is a skeleton file that can serve as a starting point for a Python
+console script. To run this script uncomment the following lines in the
+[options.entry_points] section in setup.cfg:
 
-It manipulates the pixels of an input image so that its histogram matches the
-histogram of the reference image. The matching is done independently for each
-band, as long as the number of bands is equal in the input image and the
-reference.
+    console_scripts =
+         fibonacci = satproc.skeleton:run
+
+Then run `python setup.py install` which will install the command `fibonacci`
+inside your current environment.
+Besides console scripts, the header (i.e. until _logger...) of this file can
+also be used as template for Python modules.
+
+Note: This skeleton file can be safely removed if not needed!
 """
 
 import argparse
@@ -13,7 +20,7 @@ import logging
 import sys
 
 from satproc import __version__
-from satproc.histogram import match_histograms
+from satproc.filter import filter_by_max_prob
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -32,20 +39,23 @@ def parse_args(args):
       :obj:`argparse.Namespace`: command line parameters namespace
     """
     parser = argparse.ArgumentParser(
-        description="Match histograms between images",
+        description="Filter directory of result chips by max. prob threshold",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
+    parser.add_argument("input_dir", help="path to directory containing rasters")
     parser.add_argument(
-        "--version",
-        action="version",
-        version="satproc {ver}".format(ver=__version__),
+        "-t",
+        "--threshold",
+        type=float,
+        help="apply threshold (between 0 and 1)",
+        default=0.5,
     )
+    parser.add_argument("-o", "--output-dir", help="path to output results directory")
 
-    parser.add_argument("src", help="input raster")
-    parser.add_argument("dst", help="output raster")
-    parser.add_argument("-r", "--reference", required=True, help="reference raster")
-
+    parser.add_argument(
+        "--version", action="version", version="satproc {ver}".format(ver=__version__)
+    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -62,7 +72,7 @@ def parse_args(args):
         action="store_const",
         const=logging.DEBUG,
     )
-    return parser.parse_args(args)
+    return parser.parse_args(args), parser
 
 
 def setup_logging(loglevel):
@@ -83,13 +93,13 @@ def main(args):
     Args:
       args ([str]): command line parameter list
     """
-    args = parse_args(args)
+    args, parser = parse_args(args)
     setup_logging(args.loglevel)
 
-    match_histograms(
-        args.src,
-        args.dst,
-        reference_path=args.reference,
+    filter_by_max_prob(
+        input_dir=args.input_dir,
+        output_dir=args.output_dir,
+        threshold=args.threshold,
     )
 
 

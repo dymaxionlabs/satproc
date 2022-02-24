@@ -1,7 +1,6 @@
 import logging
 import os
 
-# Workaround: Load fiona at the end to avoid segfault on box (???)
 import fiona
 import numpy as np
 import rasterio

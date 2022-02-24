@@ -1,6 +1,5 @@
 import json
 import logging
-import math
 import multiprocessing as mp
 import os
 import subprocess
@@ -137,71 +136,6 @@ def rescale_intensity(image, rescale_mode, rescale_range):
     )
 
 
-def calculate_raster_percentiles(
-    raster, lower_cut=2, upper_cut=98, sample_size=5000, block_size=2048
-):
-    """Estimate raster percentiles in blocks
-
-    This method tiles raster image in blocks, samples block
-    and calculates percentiles on all samples.
-
-    Useful for large images that don't fit memory.
-
-    Parameters
-    ----------
-    raster : str
-        path to raster image
-    lower_cut : float
-        lower cut percentile (default: 2)
-    upper_cut : float
-        upper cut percentile (default: 98)
-    sample_size : int
-        how many samples to take for each block (default: 5000)
-    block_size : int
-        size of square block (default: 2048)
-
-    Returns
-    -------
-    Tuple[float, float]
-        raster percentiles
-
-    """
-    sample_size = 5000
-    size = (2048, 2048)
-
-    with rasterio.open(raster) as ds:
-        windows = list(sliding_windows(size, size, ds.width, ds.height))
-        window_sample_size = math.ceil(sample_size / len(windows))
-        _logger.info(
-            "Windows: %d, windows sample size: %d", len(windows), window_sample_size
-        )
-        totals_per_bands = [[] for _ in range(ds.count)]
-        for window, _ in tqdm(windows):
-            img = ds.read(window=window)
-            img = np.nan_to_num(img)
-            window_sample = []
-            for i in range(img.shape[0]):
-                values = img[i].flatten()
-                window_sample.append(
-                    np.random.choice(values, size=window_sample_size, replace=False)
-                )
-            for i, win in enumerate(window_sample):
-                totals_per_bands[i].append(win)
-
-        for i, totals in enumerate(totals_per_bands):
-            totals_per_bands[i] = np.array(totals).flatten()
-
-        totals = np.array(totals_per_bands)
-        _logger.info("Total shape: %s", totals.shape)
-
-        res = tuple(
-            tuple(p) for p in np.percentile(totals, (lower_cut, upper_cut), axis=1).T
-        )
-        _logger.info("Percentiles: %s", res)
-
-        return res
-
-
 def write_chips_geojson(output_path, chip_pairs, *, chip_type, crs, basename):
     """Write a GeoJSON containing chips polygons as features
 
@@ -326,7 +260,7 @@ def run_command(cmd, quiet=True):
     """
     stderr = subprocess.DEVNULL if quiet else None
     stdout = subprocess.DEVNULL if quiet else None
-    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)
+    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout, check=True)
 
 
 def map_with_threads(items, worker, num_jobs=None, total=None, desc=None):
