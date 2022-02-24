@@ -22,6 +22,19 @@ jobs:
         os: [ubuntu-latest, macOS-latest]
 
     steps:
+      - name: Install dependencies (GDAL)
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            apt install gdal-bin
+          elif [ "$RUNNER_OS" == "MacOS" ]; then
+            brew install gdal
+          else
+            echo "$RUNNER_OS not supported"
+            exit 1
+          fi
+          gdal-config --version
+        shell: bash
+
       - uses: actions/checkout@v2
       - name: Install Poetry
         run: |
