@@ -26,7 +26,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
             sudo apt install gdal-bin
-          elif [ "$RUNNER_OS" == "MacOS" ]; then
+          elif [ "$RUNNER_OS" == "macOS" ]; then
             brew install gdal
           else
             echo "$RUNNER_OS not supported"
