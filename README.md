@@ -3,6 +3,8 @@
 Python library and CLI tools for processing geospatial imagery for ML
 
 [![](https://img.shields.io/pypi/v/pysatproc.svg)](https://pypi.python.org/pypi/pysatproc)
+[![CI](https://github.com/dymaxionlabs/satproc/actions/workflows/main.yml/badge.svg)](https://github.com/dymaxionlabs/satproc/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/dymaxionlabs/satproc/branch/main/graph/badge.svg?token=B0DDIMTDWY)](https://codecov.io/gh/dymaxionlabs/satproc)
 [![](https://img.shields.io/github/issues-closed/dymaxionlabs/satproc)](https://github.com/dymaxionlabs/satproc/issues)
 ![](https://img.shields.io/github/license/dymaxionlabs/satproc)
 
