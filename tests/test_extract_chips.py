@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 
+import fiona
 import pytest
 
 from satproc import __version__
@@ -41,6 +42,8 @@ def test_extract_chips_with_masks(shared_datadir):
             size=128,
             step_size=128,
             bands=[1, 2, 3, 4],
+            rescale_mode="percentiles",
+            rescale_range=(2, 98),
             output_dir=tmpdir,
         )
 
@@ -67,7 +70,10 @@ def test_extract_chips_with_masks_and_aoi(shared_datadir):
             size=128,
             step_size=128,
             bands=[1, 2, 3, 4],
+            rescale_mode="values",
+            rescale_range=(0.0, 0.3),
             output_dir=tmpdir,
+            write_footprints=True,
         )
 
         output_images_dir = Path(tmpdir) / "images"
@@ -77,6 +83,11 @@ def test_extract_chips_with_masks_and_aoi(shared_datadir):
         output_extent_masks_dir = Path(tmpdir) / "extent"
         assert output_extent_masks_dir.is_dir()
         assert len(list(output_extent_masks_dir.glob("*.tif"))) == 4
+
+        output_footprints_file = Path(tmpdir) / "lux1.geojson"
+        assert output_footprints_file.is_file()
+        with fiona.open(output_footprints_file) as f:
+            assert len(list(f)) == 4
 
 
 def test_cli_main(capsys):
