@@ -326,7 +326,7 @@ def run_command(cmd, quiet=True):
     """
     stderr = subprocess.DEVNULL if quiet else None
     stdout = subprocess.DEVNULL if quiet else None
-    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout)
+    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout, check=True)
 
 
 def map_with_threads(items, worker, num_jobs=None, total=None, desc=None):
