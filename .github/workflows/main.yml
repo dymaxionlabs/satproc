@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies (GDAL)
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
-            apt install gdal-bin
+            sudo apt install gdal-bin
           elif [ "$RUNNER_OS" == "MacOS" ]; then
             brew install gdal
           else
