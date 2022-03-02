@@ -2,24 +2,26 @@
 
 Python library and CLI tools for processing geospatial imagery for ML
 
-[![](https://img.shields.io/pypi/v/pysatproc.svg)](https://pypi.python.org/pypi/pysatproc)
+[![Pypi](https://img.shields.io/pypi/v/pysatproc.svg)](https://pypi.python.org/pypi/pysatproc)
 [![CI](https://github.com/dymaxionlabs/satproc/actions/workflows/main.yml/badge.svg)](https://github.com/dymaxionlabs/satproc/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/dymaxionlabs/satproc/branch/main/graph/badge.svg?token=B0DDIMTDWY)](https://codecov.io/gh/dymaxionlabs/satproc)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dymaxionlabs_satproc&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dymaxionlabs_satproc)
-[![](https://img.shields.io/github/issues-closed/dymaxionlabs/satproc)](https://github.com/dymaxionlabs/satproc/issues)
-![](https://img.shields.io/github/license/dymaxionlabs/satproc)
+[![Issues](https://img.shields.io/github/issues-closed/dymaxionlabs/satproc)](https://github.com/dymaxionlabs/satproc/issues)
+[![License](https://img.shields.io/github/license/dymaxionlabs/satproc)](LICENSE.txt)
 
-## Documentation
+_This digital tool is part of the catalog of tools of the **Inter-American Development Bank**. You can learn more about the IDB initiative at [code.iadb.org](https://code.iadb.org)_
+
+## :open_book: Documentation
 
 * [Stable](https://satproc.readthedocs.io/en/stable/)
 * [Latest](https://satproc.readthedocs.io/en/latest/)
 
-## Bugs / Questions
+## :question: Bugs / Questions
 
 * [Report bugs/feature requests](https://github.com/dymaxionlabs/satproc/issues)
 * [Ask questions](https://github.com/dymaxionlabs/satproc/discussions)
 
-## Contributing
+## :handshake: Contributing
 
 Bug reports and pull requests are welcome on GitHub at the [issues
 page](https://github.com/dymaxionlabs/satproc). This project is intended to be
@@ -27,6 +29,12 @@ a safe, welcoming space for collaboration, and contributors are expected to
 adhere to the [Contributor Covenant](http://contributor-covenant.org) code of
 conduct.
 
-## License
+<a href="https://github.com/dymaxionlabs/satproc/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=dymaxionlabs/satproc" />
+</a>
 
-This project is licensed under Apache 2.0. Refer to [LICENSE.txt](./LICENSE.txt).
+Made with [contrib.rocks](https://contrib.rocks).
+
+## :page_facing_up: License
+
+This project is licensed under Apache 2.0. Refer to [LICENSE.txt](LICENSE.txt).
