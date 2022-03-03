@@ -36,8 +36,7 @@ jobs:
 
       - name: Build docs
         run: |
-          poetry shell
-          cd docs/ && make html
+          poetry run sphinx-build -M html docs/ docs/_build/
 
       - name: Deploy pages
         uses: JamesIves/github-pages-deploy-action@v4.2.5
