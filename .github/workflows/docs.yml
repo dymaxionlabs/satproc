@@ -1,0 +1,45 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Docs
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies (GDAL)
+        run: |
+          sudo apt install libgdal-dev gdal-bin
+          gdal-config --version
+        shell: bash
+
+      - uses: actions/checkout@v2
+      - name: Install Poetry
+        run: |
+          pip3 install poetry
+        shell: bash
+
+      - name: Install dependencies
+        run: |
+          poetry install
+
+      - name: Build docs
+        run: |
+          cd docs/ && make html
+
+      - name: Deploy pages
+        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        with:
+          branch: gh-pages
+          folder: docs/_build/html
