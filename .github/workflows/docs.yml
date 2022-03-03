@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Install dependencies (GDAL)
         run: |
-          sudo apt install libgdal-dev gdal-bin
+          sudo apt install libgdal-dev gdal-bin pandoc
           gdal-config --version
         shell: bash
 
