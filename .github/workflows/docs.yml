@@ -36,6 +36,7 @@ jobs:
 
       - name: Build docs
         run: |
+          poetry shell
           cd docs/ && make html
 
       - name: Deploy pages
