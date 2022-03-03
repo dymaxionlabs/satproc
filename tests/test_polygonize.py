@@ -46,7 +46,7 @@ def test_polygonize_with_threshold(datadir):
             assert len(features) == 2
 
 
-def test_cli_main(capsys):
+def test_cli_version(capsys):
     """CLI test"""
     # capsys is a pytest fixture that allows asserts agains stdout/stderr
     # https://docs.pytest.org/en/stable/capture.html
@@ -56,3 +56,13 @@ def test_cli_main(capsys):
     assert error.value.code == 0
     captured = capsys.readouterr()
     assert f"satproc {__version__}" in captured.out
+
+
+def test_cli_command(capsys, datadir):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_dir = datadir / "chips"
+        output_path = Path(tmpdir) / "output.gpkg"
+
+        main(["--input-dir", str(input_dir), "--output", str(output_path), "--verbose"])
+
+        assert output_path.is_file()

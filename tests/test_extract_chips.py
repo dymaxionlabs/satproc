@@ -14,10 +14,10 @@ __license__ = "Apache-2.0"
 
 
 def test_extract_chips_basic(shared_datadir):
-    image_path = shared_datadir / "lux1.tif"
-
     with tempfile.TemporaryDirectory() as tmpdir:
+        image_path = shared_datadir / "lux1.tif"
         rasters = [str(image_path)]
+
         extract_chips(
             rasters,
             size=128,
@@ -31,11 +31,11 @@ def test_extract_chips_basic(shared_datadir):
 
 
 def test_extract_chips_with_masks(shared_datadir):
-    image_path = shared_datadir / "lux1.tif"
-    labels_path = shared_datadir / "lux1_gt.geojson"
-
     with tempfile.TemporaryDirectory() as tmpdir:
+        image_path = shared_datadir / "lux1.tif"
+        labels_path = shared_datadir / "lux1_gt.geojson"
         rasters = [str(image_path)]
+
         extract_chips(
             rasters,
             labels=labels_path,
@@ -57,12 +57,12 @@ def test_extract_chips_with_masks(shared_datadir):
 
 
 def test_extract_chips_with_masks_and_aoi(shared_datadir):
-    image_path = shared_datadir / "lux1.tif"
-    labels_path = shared_datadir / "lux1_gt.geojson"
-    aoi_path = shared_datadir / "lux1_aoi.geojson"
-
     with tempfile.TemporaryDirectory() as tmpdir:
+        image_path = shared_datadir / "lux1.tif"
+        labels_path = shared_datadir / "lux1_gt.geojson"
+        aoi_path = shared_datadir / "lux1_aoi.geojson"
         rasters = [str(image_path)]
+
         extract_chips(
             rasters,
             aoi=str(aoi_path),
@@ -90,7 +90,7 @@ def test_extract_chips_with_masks_and_aoi(shared_datadir):
             assert len(list(f)) == 4
 
 
-def test_cli_main(capsys):
+def test_cli_version(capsys):
     """CLI test"""
     # capsys is a pytest fixture that allows asserts agains stdout/stderr
     # https://docs.pytest.org/en/stable/capture.html
@@ -100,3 +100,25 @@ def test_cli_main(capsys):
     assert error.value.code == 0
     captured = capsys.readouterr()
     assert f"satproc {__version__}" in captured.out
+
+
+def test_cli_command(capsys, shared_datadir):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        image_path = shared_datadir / "lux1.tif"
+        rasters = [str(image_path)]
+
+        main(
+            [
+                "--verbose",
+                "--size",
+                "128",
+                "--step-size",
+                "128",
+                "--output-dir",
+                tmpdir,
+                *rasters,
+            ]
+        )
+
+        output_images_dir = Path(tmpdir) / "images"
+        assert output_images_dir.is_dir()

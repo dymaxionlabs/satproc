@@ -41,7 +41,7 @@ def test_generalize_smooth(datadir):
         assert output_path.is_file()
 
 
-def test_cli_main(capsys):
+def test_cli_version(capsys):
     """CLI test"""
     # capsys is a pytest fixture that allows asserts agains stdout/stderr
     # https://docs.pytest.org/en/stable/capture.html
@@ -51,3 +51,22 @@ def test_cli_main(capsys):
     assert error.value.code == 0
     captured = capsys.readouterr()
     assert f"satproc {__version__}" in captured.out
+
+
+def test_cli_command(capsys, datadir):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_files = list(datadir.glob("*.gpkg"))
+
+        main(
+            [
+                "--verbose",
+                "--output-dir",
+                tmpdir,
+                "--target-crs",
+                "epsg:3857",
+                *[str(p) for p in input_files],
+            ]
+        )
+
+        output_path = Path(tmpdir) / input_files[0].name
+        assert output_path.is_file()
