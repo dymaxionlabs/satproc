@@ -11,17 +11,17 @@ Python library and CLI tools for processing geospatial imagery for ML
 
 _This digital tool is part of the catalog of tools of the **Inter-American Development Bank**. You can learn more about the IDB initiative at [code.iadb.org](https://code.iadb.org)_
 
-## :open_book: Documentation
+## Documentation
 
 * [Stable](https://satproc.readthedocs.io/en/stable/)
 * [Latest](https://satproc.readthedocs.io/en/latest/)
 
-## :question: Bugs / Questions
+## Bugs / Questions
 
 * [Report bugs/feature requests](https://github.com/dymaxionlabs/satproc/issues)
 * [Ask questions](https://github.com/dymaxionlabs/satproc/discussions)
 
-## :handshake: Contributing
+## Contributing
 
 Bug reports and pull requests are welcome on GitHub at the [issues
 page](https://github.com/dymaxionlabs/satproc). This project is intended to be
@@ -35,7 +35,7 @@ conduct.
 
 Made with [contrib.rocks](https://contrib.rocks).
 
-## :page_facing_up: License
+## License
 
 This project is licensed under Apache 2.0. Refer to
 [LICENSE.txt](https://github.com/dymaxionlabs/satproc/blob/main/LICENSE.txt).
