@@ -7,21 +7,21 @@ Python library and CLI tools for processing geospatial imagery for ML
 [![codecov](https://codecov.io/gh/dymaxionlabs/satproc/branch/main/graph/badge.svg?token=B0DDIMTDWY)](https://codecov.io/gh/dymaxionlabs/satproc)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dymaxionlabs_satproc&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dymaxionlabs_satproc)
 [![Issues](https://img.shields.io/github/issues-closed/dymaxionlabs/satproc)](https://github.com/dymaxionlabs/satproc/issues)
-[![License](https://img.shields.io/github/license/dymaxionlabs/satproc)](LICENSE.txt)
+[![License](https://img.shields.io/github/license/dymaxionlabs/satproc)](https://github.com/dymaxionlabs/satproc/blob/main/LICENSE.txt)
 
 _This digital tool is part of the catalog of tools of the **Inter-American Development Bank**. You can learn more about the IDB initiative at [code.iadb.org](https://code.iadb.org)_
 
-## :open_book: Documentation
+## Documentation
 
 * [Stable](https://satproc.readthedocs.io/en/stable/)
 * [Latest](https://satproc.readthedocs.io/en/latest/)
 
-## :question: Bugs / Questions
+## Bugs / Questions
 
 * [Report bugs/feature requests](https://github.com/dymaxionlabs/satproc/issues)
 * [Ask questions](https://github.com/dymaxionlabs/satproc/discussions)
 
-## :handshake: Contributing
+## Contributing
 
 Bug reports and pull requests are welcome on GitHub at the [issues
 page](https://github.com/dymaxionlabs/satproc). This project is intended to be
@@ -35,6 +35,7 @@ conduct.
 
 Made with [contrib.rocks](https://contrib.rocks).
 
-## :page_facing_up: License
+## License
 
-This project is licensed under Apache 2.0. Refer to [LICENSE.txt](LICENSE.txt).
+This project is licensed under Apache 2.0. Refer to
+[LICENSE.txt](https://github.com/dymaxionlabs/satproc/blob/main/LICENSE.txt).

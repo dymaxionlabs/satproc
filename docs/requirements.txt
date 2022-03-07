@@ -1,7 +1,18 @@
 # Requirements file for ReadTheDocs, check .readthedocs.yml.
 # To build the module reference correctly, make sure every external package
 # under `install_requires` in `setup.cfg` is also listed here!
-nbsphinx==0.8.7
+Fiona==1.8.21
+IPython==8.1.1
+nbsphinx==0.8.8
+numpy==1.22.2
+opencv-python==4.5.5.62
+pyproj==3.3.0
+rasterio==1.2.10
 recommonmark==0.7.1
-sphinx==4.3.2
+Rtree==0.9.7
+scikit-image==0.19.2
+scipy==1.8.0
+Shapely==1.8.1
+sphinx==4.4.0
 sphinx_rtd_theme==1.0.0
+tqdm==4.62.3
