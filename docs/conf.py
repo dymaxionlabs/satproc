@@ -81,7 +81,6 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
-    "sphinxemoji.sphinxemoji",
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
 ]
