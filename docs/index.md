@@ -5,9 +5,8 @@
 * [Overview](readme)
 * [Installation](installation)
 * [Getting Started](getting-started)
-* [Usage Examples](examples)
+* [Tutorials](tutorials)
 * [API Documentation](api/modules)
-* [Contributors](authors)
 * [Changelog](changelog)
 
 ## Indices and tables
