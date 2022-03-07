@@ -5,7 +5,7 @@ Fiona==1.8.21
 IPython==8.1.1
 nbsphinx==0.8.8
 numpy==1.22.2
-opencv-python==4.5.5
+opencv-python==4.5.5.62
 pyproj==3.3.0
 rasterio==1.2.10
 recommonmark==0.7.1
