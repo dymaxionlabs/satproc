@@ -19,7 +19,7 @@ _This digital tool is part of the catalog of tools of the **Inter-American Devel
 ## Bugs / Questions
 
 * [Report bugs/feature requests](https://github.com/dymaxionlabs/satproc/issues)
-* [Ask questions](https://github.com/dymaxionlabs/satproc/discussions)
+* [Ask questions](https://gitter.im/dymaxionlabs/satproc)
 
 ## Contributing
 
