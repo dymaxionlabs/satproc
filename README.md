@@ -35,6 +35,9 @@ conduct.
 
 Made with [contrib.rocks](https://contrib.rocks).
 
+The current roadmap is available at GitHub at the
+[projects page](https://github.com/dymaxionlabs/satproc/projects/1).
+
 ## License
 
 This project is licensed under Apache 2.0. Refer to
