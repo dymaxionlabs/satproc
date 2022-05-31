@@ -136,7 +136,7 @@ def merge_chips(images_files, *, win_bounds):
     return img
 
 
-def smooth_stitch(*, input_dir, output_dir):
+def smooth_stitch(*, input_dir, output_dir, temp_dir=None):
     """
     Takes input directory of overlapping chips, and generates a new directory
     of non-overlapping chips with smooth edges.
@@ -153,55 +153,62 @@ def smooth_stitch(*, input_dir, output_dir):
         chip_size = src.width
         assert src.width == src.height
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_image_paths = generate_spline_window_chips(
-            image_paths=image_paths, output_dir=tmpdir
-        )
+    if temp_dir:
+        tmpdir = temp_dir
+    else:
+        tmpdir = tempfile.TemporaryDirectory()
 
-        # Get bounds from all images and build R-Tree index
-        idx, (dst_w, dst_s, dst_e, dst_n) = build_bounds_index(tmp_image_paths)
+    tmp_image_paths = generate_spline_window_chips(
+        image_paths=image_paths, output_dir=tmpdir
+    )
 
-        # Get affine transform for complete bounds
-        logger.info("Output bounds: %r", (dst_w, dst_s, dst_e, dst_n))
-        output_transform = Affine.translation(dst_w, dst_n)
-        logger.info("Output transform, before scaling: %r", output_transform)
+    # Get bounds from all images and build R-Tree index
+    idx, (dst_w, dst_s, dst_e, dst_n) = build_bounds_index(tmp_image_paths)
 
-        output_transform *= Affine.scale(src_res[0], -src_res[1])
-        logger.info("Output transform, after scaling: %r", output_transform)
+    # Get affine transform for complete bounds
+    logger.info("Output bounds: %r", (dst_w, dst_s, dst_e, dst_n))
+    output_transform = Affine.translation(dst_w, dst_n)
+    logger.info("Output transform, before scaling: %r", output_transform)
 
-        # Compute output array shape. We guarantee it will cover the output
-        # bounds completely. We need this to build windows list later.
-        output_width = int(math.ceil((dst_e - dst_w) / src_res[0]))
-        output_height = int(math.ceil((dst_n - dst_s) / src_res[1]))
+    output_transform *= Affine.scale(src_res[0], -src_res[1])
+    logger.info("Output transform, after scaling: %r", output_transform)
 
-        # Set width and height for output chips, and other attributes
-        profile.update(width=chip_size, height=chip_size, tiled=True)
+    # Compute output array shape. We guarantee it will cover the output
+    # bounds completely. We need this to build windows list later.
+    output_width = int(math.ceil((dst_e - dst_w) / src_res[0]))
+    output_height = int(math.ceil((dst_n - dst_s) / src_res[1]))
 
-        windows = list(
-            sliding_windows(chip_size, width=output_width, height=output_height)
-        )
-        logger.info("Num. windows: %d", len(windows))
+    # Set width and height for output chips, and other attributes
+    profile.update(width=chip_size, height=chip_size, tiled=True)
 
-        with logging_redirect_tqdm():
-            for win, (i, j) in tqdm(windows, ascii=True, desc="Merge chips"):
-                # Get window affine transform and bounds
-                win_transform = rasterio.windows.transform(win, output_transform)
-                win_bounds = rasterio.windows.bounds(win, output_transform)
+    windows = list(
+        sliding_windows(chip_size, width=output_width, height=output_height)
+    )
+    logger.info("Num. windows: %d", len(windows))
 
-                # Get chips that intersect with window
-                intersect_chip_paths = [
-                    tmp_image_paths[i] for i in idx.intersection(win_bounds)
-                ]
+    with logging_redirect_tqdm():
+        for win, (i, j) in tqdm(windows, ascii=True, desc="Merge chips"):
+            # Get window affine transform and bounds
+            win_transform = rasterio.windows.transform(win, output_transform)
+            win_bounds = rasterio.windows.bounds(win, output_transform)
 
-                if intersect_chip_paths:
-                    # Merge them with median method
-                    img = merge_chips(intersect_chip_paths, win_bounds=win_bounds)
+            # Get chips that intersect with window
+            intersect_chip_paths = [
+                tmp_image_paths[i] for i in idx.intersection(win_bounds)
+            ]
 
-                    # Write output chip
-                    profile.update(transform=win_transform)
-                    output_path = os.path.join(output_dir, f"{i}_{j}.tif")
+            if intersect_chip_paths:
+                # Merge them with median method
+                img = merge_chips(intersect_chip_paths, win_bounds=win_bounds)
 
-                    os.makedirs(output_dir, exist_ok=True)
-                    with rasterio.open(output_path, "w", **profile) as dst:
-                        for i in range(img.shape[0]):
-                            dst.write(img[i, :, :], i + 1)
+                # Write output chip
+                profile.update(transform=win_transform)
+                output_path = os.path.join(output_dir, f"{i}_{j}.tif")
+
+                os.makedirs(output_dir, exist_ok=True)
+                with rasterio.open(output_path, "w", **profile) as dst:
+                    for i in range(img.shape[0]):
+                        dst.write(img[i, :, :], i + 1)
+
+    if not temp_dir:
+        tmpdir.cleanup()

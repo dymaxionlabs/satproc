@@ -29,7 +29,7 @@ def parse_args(args):
 
     parser.add_argument("input_dir", help="results directory")
     parser.add_argument("-o", "--output-dir", help="output directory")
-    # parser.add_argument("--temp-dir", help="temporary directory")
+    parser.add_argument("--temp-dir", help="temporary directory")
 
     parser.add_argument(
         "--version", action="version", version="satproc {ver}".format(ver=__version__)
@@ -74,7 +74,7 @@ def main(args):
     args, _parser = parse_args(args)
     setup_logging(args.loglevel)
 
-    smooth_stitch(input_dir=args.input_dir, output_dir=args.output_dir)
+    smooth_stitch(input_dir=args.input_dir, output_dir=args.output_dir, temp_dir=args.temp_dir)
 
 
 def run():
