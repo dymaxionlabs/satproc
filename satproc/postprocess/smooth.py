@@ -49,6 +49,11 @@ def generate_spline_window_chips(*, image_paths, output_dir):
     if not image_paths:
         return []
 
+    logger.info((
+        "Interpolate all images using a squared spline window (power=2) "
+        f"and store chips on {output_dir}"
+    ))
+
     first_image = image_paths[0]
     with rasterio.open(first_image) as src:
         chip_size = src.width
@@ -62,9 +67,10 @@ def generate_spline_window_chips(*, image_paths, output_dir):
         for img_path in tqdm(image_paths, ascii=True, desc="Smooth chips"):
             with rasterio.open(img_path) as src:
                 profile = src.profile.copy()
+                profile.update(dtype=np.float64)
                 img = src.read()
 
-            img = (img * spline_window).astype(np.uint8)
+            img = img * spline_window
 
             out_path = os.path.join(output_dir, os.path.basename(img_path))
             os.makedirs(output_dir, exist_ok=True)
