@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def spline_window(window_size, power=2):
     """
-    Squared spline (power=2) window function:
+    Squared spline window function:
     https://www.wolframalpha.com/input/?i=y%3Dx**2,+y%3D-(x-2)**2+%2B2,+y%3D(x-4)**2,+from+y+%3D+0+to+2
     """
     intersection = int(window_size / 4)
@@ -44,13 +44,13 @@ def window_2D(size, power=2, n_channels=1):
     return np.repeat(wind, n_channels, axis=0).reshape(n_channels, size, size)
 
 
-def generate_spline_window_chips(*, image_paths, output_dir, power=1.5):
+def generate_spline_window_chips(*, image_paths, output_dir, power=2):
     """Interpolates all images using a squared spline window"""
     if not image_paths:
         return []
 
     logger.info((
-        "Interpolate all images using a squared spline window (power=2) "
+        f"Interpolate all images using a squared spline window (power={power}) "
         f"and store chips on {output_dir}"
     ))
 
