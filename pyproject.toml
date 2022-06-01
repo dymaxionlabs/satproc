@@ -43,6 +43,7 @@ satproc_smooth_stitch = "satproc.console.smooth_stitch:run"
 satproc_polygonize = "satproc.console.polygonize:run"
 satproc_generalize = "satproc.console.generalize:run"
 satproc_filter = "satproc.console.filter:run"
+satproc_spatial_filter = "satproc.console.spatial_filter:run"
 
 [tool.pytest.ini_options]
 addopts = "--exitfirst --failed-first --cov=satproc --cov-report html --cov-report xml --cov-report term"
