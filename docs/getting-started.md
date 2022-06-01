@@ -19,6 +19,7 @@ process files without resorting to writing a Python script.
 * `satproc_polygonize`: Polygonizes chip images into a single polygon vector file.
 * `satproc_generalize`: Generalizes vector files by simplyfing and smoothing polygon boundary lines.
 * `satproc_smooth_stitch`: Smoothes overlapping probability result chips.
+* `satproc_spatial_filter`: Applies a spatial filter (median, gaussian) to an image
 * `satproc_scale`: Rescales values from raster images
 * `satproc_match_histograms`: Matches histograms of raster images from a reference image.
 
