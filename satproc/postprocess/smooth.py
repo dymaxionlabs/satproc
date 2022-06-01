@@ -82,18 +82,6 @@ def generate_spline_window_chips(*, image_paths, output_dir, power=1.5):
     return res
 
 
-# Based on 'max' method from
-# https://github.com/mapbox/rasterio/blob/master/rasterio/merge.py
-def add_merge_method(
-    old_data, new_data, old_nodata, new_nodata, index=None, roff=None, coff=None
-):
-    mask = np.logical_and(~old_nodata, ~new_nodata)
-    old_data[mask] = old_data[mask] + new_data[mask]
-
-    mask = np.logical_and(old_nodata, ~new_nodata)
-    old_data[mask] = new_data[mask]
-
-
 def build_bounds_index(image_files):
     """Returns bounds of merged images and builds an R-Tree index"""
     idx = index.Index()
@@ -130,7 +118,7 @@ def sliding_windows(size, whole=False, step_size=None, *, width, height):
 def merge_chips(images_files, *, win_bounds):
     """Merge by taking mean between overlapping images"""
     datasets = [rasterio.open(p) for p in images_files]
-    img, _ = rasterio.merge.merge(datasets, bounds=win_bounds, method=add_merge_method)
+    img, _ = rasterio.merge.merge(datasets, bounds=win_bounds, method="max")
     for ds in datasets:
         ds.close()
     return img
@@ -156,7 +144,8 @@ def smooth_stitch(*, input_dir, output_dir, power=1.5, temp_dir=None):
     if temp_dir:
         tmpdir = temp_dir
     else:
-        tmpdir = tempfile.TemporaryDirectory()
+        tmp_dir = tempfile.TemporaryDirectory()
+        tmpdir = tmp_dir.name
 
     tmp_image_paths = generate_spline_window_chips(
         image_paths=image_paths, output_dir=tmpdir, power=power
@@ -211,4 +200,4 @@ def smooth_stitch(*, input_dir, output_dir, power=1.5, temp_dir=None):
                         dst.write(img[i, :, :], i + 1)
 
     if not temp_dir:
-        tmpdir.cleanup()
+        tmp_dir.cleanup()
