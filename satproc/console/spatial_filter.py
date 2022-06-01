@@ -2,6 +2,8 @@
 import argparse
 import logging
 import sys
+import os
+from glob import glob
 
 from satproc import __version__
 from satproc.postprocess.spatial_filter import MODES, spatial_filter
@@ -40,10 +42,25 @@ def parse_args(args):
         version="satproc {ver}".format(ver=__version__),
     )
 
-    parser.add_argument("input", help="input raster file")
-    parser.add_argument("output", help="output raster file")
+    parser.add_argument("input", nargs="*", help="input raster")
+    parser.add_argument("--input-dir", help="directory containing input rasters")
+    parser.add_argument("--output", "-o", help="output raster")
     parser.add_argument("--mode", "-m", choices=MODES, default="gaussian", help="Filter mode")
     parser.add_argument("--size", "-s", type=check_kernel_size, default=5, help="Size of the filter")
+    parser.add_argument(
+        "--merge",
+        dest="merge",
+        default=True,
+        action="store_true",
+        help="merge all input files into a single virtual raster before filtering",
+    )
+    parser.add_argument(
+        "--no-merge",
+        dest="merge",
+        default=False,
+        action="store_false",
+        help="do not merge all input files into a single virtual raster",
+    )
 
     parser.add_argument(
         "-v",
@@ -86,7 +103,23 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    spatial_filter(input_path=args.input, output_path=args.output, mode=args.mode, size=args.size)
+    input_paths = []
+    if args.input:
+        input_paths.extend(args.input)
+    if args.input_dir:
+        files = list(glob(os.path.join(args.input_dir, "*.tif")))
+        input_paths.extend(files)
+
+    if not input_paths:
+        raise RuntimeError(
+            (
+                "No input files found. "
+                "You should pass individual input_image paths, or use --input-dir."
+            )
+        )
+    _logger.info("Num. input files: %d", len(input_paths))
+
+    spatial_filter(input_paths=input_paths, output_path=args.output, mode=args.mode, size=args.size)
 
 
 def run():

@@ -3,6 +3,7 @@ import logging
 import multiprocessing as mp
 import os
 import subprocess
+import tempfile
 from itertools import zip_longest
 from multiprocessing.pool import ThreadPool
 
@@ -243,7 +244,28 @@ def fiona_crs_from_proj_crs(proj_crs):
     return fio_crs
 
 
-def run_command(cmd, quiet=True):
+def build_virtual_raster(image_paths, output_path, separate=None, band=None):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    # For some reason, relative paths wont work, so we get the absolute path of
+    # each input image path.
+    image_paths = [os.path.abspath(p) for p in image_paths]
+    with tempfile.NamedTemporaryFile() as f:
+        # Write a list of image files to a temporary file
+        for image_path in image_paths:
+            f.write(f"{image_path}\n".encode())
+        f.flush()
+        output_path = os.path.abspath(output_path)
+        run_command(
+            f"gdalbuildvrt -q -overwrite "
+            f"-input_file_list {f.name} "
+            f"{'-separate ' if separate else ''}"
+            f"{f'-b {band} ' if band else ''}"
+            f"{output_path}",
+            cwd=os.path.dirname(output_path),
+        )
+
+
+def run_command(cmd, quiet=True, *, cwd=None):
     """Run a shell command
 
     Parameters
@@ -260,7 +282,7 @@ def run_command(cmd, quiet=True):
     """
     stderr = subprocess.DEVNULL if quiet else None
     stdout = subprocess.DEVNULL if quiet else None
-    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout, check=True)
+    subprocess.run(cmd, shell=True, stderr=stderr, stdout=stdout, check=True, cwd=cwd)
 
 
 def map_with_threads(items, worker, num_jobs=None, total=None, desc=None):
