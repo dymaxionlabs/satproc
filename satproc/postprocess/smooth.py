@@ -60,7 +60,8 @@ def generate_spline_window_chips(*, image_paths, output_dir, power=1.5):
         n_channels = src.count
         assert src.width == src.height
 
-    spline_window = window_2D(size=chip_size, power=power, n_channels=n_channels)
+    win = window_2D(size=chip_size, power=power, n_channels=n_channels)
+    norm_win = (win - win.min()) / (win.max() - win.min())
 
     res = []
     with logging_redirect_tqdm():
@@ -70,7 +71,7 @@ def generate_spline_window_chips(*, image_paths, output_dir, power=1.5):
                 profile.update(dtype=np.float64)
                 img = src.read()
 
-            img = img * spline_window
+            img = img * norm_win
 
             out_path = os.path.join(output_dir, os.path.basename(img_path))
             os.makedirs(output_dir, exist_ok=True)
