@@ -84,11 +84,11 @@ def generate_spline_window_chips(*, image_paths, output_dir):
 
 # Based on 'max' method from
 # https://github.com/mapbox/rasterio/blob/master/rasterio/merge.py
-def mean_merge_method(
+def add_merge_method(
     old_data, new_data, old_nodata, new_nodata, index=None, roff=None, coff=None
 ):
     mask = np.logical_and(~old_nodata, ~new_nodata)
-    old_data[mask] = np.mean([old_data[mask], new_data[mask]], axis=0)
+    old_data[mask] = old_data[mask] + new_data[mask]
 
     mask = np.logical_and(old_nodata, ~new_nodata)
     old_data[mask] = new_data[mask]
@@ -130,7 +130,7 @@ def sliding_windows(size, whole=False, step_size=None, *, width, height):
 def merge_chips(images_files, *, win_bounds):
     """Merge by taking mean between overlapping images"""
     datasets = [rasterio.open(p) for p in images_files]
-    img, _ = rasterio.merge.merge(datasets, bounds=win_bounds, method=mean_merge_method)
+    img, _ = rasterio.merge.merge(datasets, bounds=win_bounds, method=add_merge_method)
     for ds in datasets:
         ds.close()
     return img
