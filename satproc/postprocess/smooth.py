@@ -44,7 +44,7 @@ def window_2D(size, power=2, n_channels=1):
     return np.repeat(wind, n_channels, axis=0).reshape(n_channels, size, size)
 
 
-def generate_spline_window_chips(*, image_paths, output_dir):
+def generate_spline_window_chips(*, image_paths, output_dir, power=1.5):
     """Interpolates all images using a squared spline window"""
     if not image_paths:
         return []
@@ -60,7 +60,7 @@ def generate_spline_window_chips(*, image_paths, output_dir):
         n_channels = src.count
         assert src.width == src.height
 
-    spline_window = window_2D(size=chip_size, power=2, n_channels=n_channels)
+    spline_window = window_2D(size=chip_size, power=power, n_channels=n_channels)
 
     res = []
     with logging_redirect_tqdm():
@@ -136,7 +136,7 @@ def merge_chips(images_files, *, win_bounds):
     return img
 
 
-def smooth_stitch(*, input_dir, output_dir, temp_dir=None):
+def smooth_stitch(*, input_dir, output_dir, power=1.5, temp_dir=None):
     """
     Takes input directory of overlapping chips, and generates a new directory
     of non-overlapping chips with smooth edges.
@@ -159,7 +159,7 @@ def smooth_stitch(*, input_dir, output_dir, temp_dir=None):
         tmpdir = tempfile.TemporaryDirectory()
 
     tmp_image_paths = generate_spline_window_chips(
-        image_paths=image_paths, output_dir=tmpdir
+        image_paths=image_paths, output_dir=tmpdir, power=power
     )
 
     # Get bounds from all images and build R-Tree index
