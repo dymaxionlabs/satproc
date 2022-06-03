@@ -28,8 +28,12 @@ def make_masks(
     masks={"extent"},
     extent_no_border=False,
 ):
-    if mask_type != "class":
+    if mask_type not in ("single", "class"):
         raise RuntimeError(f"mask type '{mask_type}' not implemented")
+
+    # If mask type is single, there is a single class
+    if mask_type == "single":
+        classes = None
 
     if extent_no_border and "extent" not in masks:
         _logger.warn(
@@ -241,19 +245,23 @@ def classify_polygons(labels, label_property, classes):
         _logger.info("Found %d labels on label file %s", len(blocks), labels)
         polys_dict = {}
         for block in blocks:
-            if label_property in block["properties"]:
+            if not classes:
+                c = "_any"
+            elif label_property in block["properties"]:
                 c = str(block["properties"][label_property])
-                try:
-                    geom = shape(block["geometry"])
-                except RuntimeError:
-                    _logger.warning(
-                        "Failed to get geometry shape for feature: %s", block
-                    )
-                    continue
-                if c in polys_dict:
-                    polys_dict[c].append(geom)
-                else:
-                    polys_dict[c] = [geom]
+            else:
+                continue
+            try:
+                geom = shape(block["geometry"])
+            except RuntimeError:
+                _logger.warning(
+                    "Failed to get geometry shape for feature: %s", block
+                )
+                continue
+            if c in polys_dict:
+                polys_dict[c].append(geom)
+            else:
+                polys_dict[c] = [geom]
     if classes:
         for c in classes:
             if c not in polys_dict:
