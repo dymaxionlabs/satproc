@@ -69,6 +69,9 @@ def extract_chips(
     else:
         polys_dict = None
 
+    if step_size is None:
+        step_size = size
+
     with logging_redirect_tqdm():
         for raster in tqdm(rasters, desc="Rasters", ascii=True):
             extract_chips_from_raster(
@@ -156,7 +159,10 @@ def extract_chips_from_raster(
         if bands is None:
             bands = list(range(1, min(ds.count, 3) + 1))
 
-        _logger.info("Building windows")
+        _logger.info((
+            f"Building windows of size {size}, step size {step_size}"
+            f"{' (no overlap)' if step_size >= size else ''}"
+        ))
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(

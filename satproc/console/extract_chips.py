@@ -50,7 +50,7 @@ def parse_args(args):
         "--size", type=int, default=256, help="size of image tiles, in pixels"
     )
     parser.add_argument(
-        "--step-size", type=int, default=128, help="step size (i.e. stride), in pixels"
+        "--step-size", type=int, default=None, help="step size (i.e. stride), in pixels (if None, same as size i.e. no overlap)"
     )
     parser.add_argument(
         "--sliding-windows-mode",
