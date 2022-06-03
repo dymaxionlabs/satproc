@@ -235,7 +235,7 @@ def _get_linestrings_from_polygons(polys):
 def prepare_label_shapes(
     labels, mask_type="class", label_property="class", classes=None
 ):
-    if mask_type == "class":
+    if mask_type in ("class", "single"):
         polys_dict = classify_polygons(labels, label_property, classes)
         return polys_dict
     else:
