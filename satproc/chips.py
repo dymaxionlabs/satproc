@@ -52,6 +52,9 @@ def extract_chips(
     step_size,
     output_dir,
 ):
+    if mask_type not in ("single", "class"):
+        raise RuntimeError(f"mask type '{mask_type}' not implemented")
+
     if aoi:
         _logger.info("Prepare AOI shape")
         aoi_poly = prepare_aoi_shape(aoi)
@@ -121,6 +124,13 @@ def extract_chips_from_raster(
     step_size,
     output_dir,
 ):
+    if mask_type not in ("single", "class"):
+        raise RuntimeError(f"mask type '{mask_type}' not implemented")
+
+    # If mask type is single, there is a single class
+    if mask_type == "single":
+        classes = None
+
     if extent_no_border and "extent" not in masks:
         _logger.warn(
             (
@@ -218,9 +228,6 @@ def extract_chips_from_raster(
 
             # Write mask file
             if labels:
-                if mask_type != "class":
-                    raise RuntimeError(f"mask type '{mask_type}' not supported")
-
                 keys = classes if classes is not None else polys_dict.keys()
                 mask_imgs = multiband_chip_mask_by_classes(
                     classes=keys,

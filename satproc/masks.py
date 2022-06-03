@@ -1,5 +1,6 @@
 import logging
 import os
+from collections import defaultdict
 
 import cv2
 import fiona
@@ -28,8 +29,12 @@ def make_masks(
     masks={"extent"},
     extent_no_border=False,
 ):
-    if mask_type != "class":
+    if mask_type not in ("single", "class"):
         raise RuntimeError(f"mask type '{mask_type}' not implemented")
+
+    # If mask type is single, there is a single class
+    if mask_type == "single":
+        classes = None
 
     if extent_no_border and "extent" not in masks:
         _logger.warn(
@@ -100,8 +105,9 @@ def multiband_chip_mask_by_classes(
         polys_dict = classify_polygons(label_path, label_property, classes)
 
     for k in classes:
+        polys = polys_dict.get(k, [])
         extent_mask, bound_mask, dist_mask = mask_from_polygons(
-            polys_dict[k],
+            polys,
             win=window,
             t=transform,
             extent_no_border=extent_no_border,
@@ -229,7 +235,7 @@ def _get_linestrings_from_polygons(polys):
 def prepare_label_shapes(
     labels, mask_type="class", label_property="class", classes=None
 ):
-    if mask_type == "class":
+    if mask_type in ("class", "single"):
         polys_dict = classify_polygons(labels, label_property, classes)
         return polys_dict
     else:
@@ -239,26 +245,35 @@ def prepare_label_shapes(
 def classify_polygons(labels, label_property, classes):
     with fiona.open(labels) as blocks:
         _logger.info("Found %d labels on label file %s", len(blocks), labels)
-        polys_dict = {}
-        for block in blocks:
-            if label_property in block["properties"]:
-                c = str(block["properties"][label_property])
-                try:
-                    geom = shape(block["geometry"])
-                except RuntimeError:
-                    _logger.warning(
-                        "Failed to get geometry shape for feature: %s", block
-                    )
-                    continue
-                if c in polys_dict:
-                    polys_dict[c].append(geom)
-                else:
-                    polys_dict[c] = [geom]
-    if classes:
-        for c in classes:
-            if c not in polys_dict:
-                polys_dict[c] = []
-                _logger.warn(
-                    f"No features of class '{c}' found. Will generate empty masks."
+        if classes is not None and label_property:
+            if label_property not in blocks.schema["properties"]:
+                raise ValueError(
+                    f"label property '{label_property}' not present in labels schema"
                 )
-    return polys_dict
+        class_counts = defaultdict(int)
+        missing_classes = set()
+        polys = defaultdict(list)
+        for block in blocks:
+            if classes is None:
+                c = "_any"
+            else:
+                c = str(block["properties"][label_property])
+                class_counts[c] += 1
+                if c not in classes:
+                    missing_classes.add(c)
+                    continue
+            try:
+                geom = shape(block["geometry"])
+            except RuntimeError:
+                _logger.warning(
+                    "Failed to get geometry shape for feature: %s", block
+                )
+                continue
+            polys[c].append(geom)
+    if missing_classes:
+        _logger.warn(
+            f"Some features with classes {missing_classes} were ignored as they are not in the specified classes list"
+        )
+        for c in missing_classes:
+            _logger.warn(f"Num. features of class '{c}': {class_counts[c]}")
+    return polys
