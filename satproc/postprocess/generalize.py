@@ -60,6 +60,7 @@ def generalize(
                     )
 
                 dst_meta = src.meta.copy()
+                dst_meta['schema']['geometry'] = 'Polygon'
                 if target_crs:
                     del dst_meta["crs"]
                     dst_meta["crs_wkt"] = fiona_crs_from_proj_crs(target_crs)
