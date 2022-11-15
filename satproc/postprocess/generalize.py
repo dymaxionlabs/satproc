@@ -70,6 +70,12 @@ def generalize(
                         src, ascii=True, desc=os.path.basename(input_file)
                     ):
                         shp = shape(feat["geometry"])
+                        if shp.is_empty:
+                            _logger.warn("Skipped feature %s with empty geometry", feat['id'])
+                            continue
+                        if shp.type == 'MultiPolygon' and len(shp.geoms) > 1:
+                            _logger.warn("Skipped feature %s with a multi-part geometry (MultiPolygon)", feat['id'])
+                            continue
                         if target_crs:
                             shp = reproject_shape(shp, proj_crs, target_crs)
                         if simplify == "douglas":
