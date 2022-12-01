@@ -60,7 +60,7 @@ def generalize(
                     )
 
                 dst_meta = src.meta.copy()
-                dst_meta['schema']['geometry'] = 'Polygon'
+                dst_meta["schema"]["geometry"] = "Polygon"
                 if target_crs:
                     del dst_meta["crs"]
                     dst_meta["crs_wkt"] = fiona_crs_from_proj_crs(target_crs)
@@ -69,12 +69,22 @@ def generalize(
                     for feat in tqdm(
                         src, ascii=True, desc=os.path.basename(input_file)
                     ):
+                        if not feat["geometry"]:
+                            _logger.warn(
+                                "Skipped feature %s with empty geometry", feat["id"]
+                            )
+                            continue
                         shp = shape(feat["geometry"])
                         if shp.is_empty:
-                            _logger.warn("Skipped feature %s with empty geometry", feat['id'])
+                            _logger.warn(
+                                "Skipped feature %s with empty geometry", feat["id"]
+                            )
                             continue
-                        if shp.type == 'MultiPolygon' and len(shp.geoms) > 1:
-                            _logger.warn("Skipped feature %s with a multi-part geometry (MultiPolygon)", feat['id'])
+                        if shp.type == "MultiPolygon" and len(shp.geoms) > 1:
+                            _logger.warn(
+                                "Skipped feature %s with a multi-part geometry (MultiPolygon)",
+                                feat["id"],
+                            )
                             continue
                         if target_crs:
                             shp = reproject_shape(shp, proj_crs, target_crs)
