@@ -39,6 +39,7 @@ def extract_chips(
     rescale_range=None,
     bands=None,
     chip_type="tif",
+    target_type="segmentation",
     write_footprints=False,
     classes=None,
     crs=None,
@@ -83,6 +84,7 @@ def extract_chips(
                 bands=bands,
                 output_dir=output_dir,
                 chip_type=chip_type,
+                target_type=target_type,
                 within=within,
                 write_footprints=write_footprints,
                 crs=crs,
@@ -107,6 +109,7 @@ def extract_chips_from_raster(
     rescale_range=None,
     bands=None,
     chip_type="tif",
+    target_type="segmentation",
     write_footprints=False,
     labels=None,
     label_property="class",
@@ -235,25 +238,26 @@ def extract_chips_from_raster(
             # Write mask file
             if labels:
                 keys = classes if classes is not None else polys_dict.keys()
-                mask_imgs = multiband_chip_mask_by_classes(
-                    classes=keys,
-                    transform=ds.transform,
-                    window=window,
-                    polys_dict=polys_dict,
-                    extent_mask_path=mask_paths.get("extent"),
-                    boundary_mask_path=mask_paths.get("boundary"),
-                    distance_mask_path=mask_paths.get("distance"),
-                    label_property=label_property,
-                    extent_no_border=extent_no_border,
-                )
+                if not target_type == "classification":
+                    mask_imgs = multiband_chip_mask_by_classes(
+                        classes=keys,
+                        transform=ds.transform,
+                        window=window,
+                        polys_dict=polys_dict,
+                        extent_mask_path=mask_paths.get("extent"),
+                        boundary_mask_path=mask_paths.get("boundary"),
+                        distance_mask_path=mask_paths.get("distance"),
+                        label_property=label_property,
+                        extent_no_border=extent_no_border,
+                    )
 
-                # If all masks are empty, skip this window
-                if skip_with_empty_mask and all_masks_empty(mask_imgs):
-                    continue
+                    # If all masks are empty, skip this window
+                    if skip_with_empty_mask and all_masks_empty(mask_imgs):
+                        continue
 
-                write_window_masks(
-                    mask_imgs, window=window, metadata=meta, transform=ds.transform
-                )
+                    write_window_masks(
+                        mask_imgs, window=window, metadata=meta, transform=ds.transform
+                    )
 
             chip = (win_shape, (c, i, j))
             chips.append(chip)
@@ -270,11 +274,13 @@ def extract_chips_from_raster(
                     skip_low_contrast=skip_low_contrast,
                 )
             else:
+                if target_type == "classification":
+                  img_path = os.path.join(output_dir, "images", keys[0], name)                    
                 write_image(
-                    img,
-                    img_path,
-                    skip_low_contrast=skip_low_contrast,
-                )
+                        img,
+                        img_path,
+                        skip_low_contrast=skip_low_contrast,
+                    )   
 
         if write_footprints:
             geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
