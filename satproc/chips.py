@@ -18,6 +18,7 @@ from satproc.masks import (
     prepare_label_shapes,
     write_window_masks,
     gen_bbox_csv_rows,
+    write_bbox_csv,
 )
 from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
 
@@ -148,6 +149,8 @@ def extract_chips_from_raster(
 
     basename, _ = os.path.splitext(os.path.basename(raster))
 
+    csv_rows = []
+
     with rasterio.open(raster) as ds:
         _logger.info("Raster size: %s", (ds.width, ds.height))
 
@@ -214,7 +217,11 @@ def extract_chips_from_raster(
 
             name = f"{basename}_{i}_{j}.{chip_type}"
             img_path = os.path.join(output_dir, "images", name)
-            mask_paths = {kind: os.path.join(output_dir, kind, name) for kind in masks}
+            mask_paths = {
+                kind: os.path.join(output_dir, kind, name)
+                for kind in masks
+                if kind != "bbox-csv"
+            }
 
             # Gather list of required files
             required_files = {img_path}
@@ -251,11 +258,11 @@ def extract_chips_from_raster(
                 )
 
                 if "bbox-csv" in masks:
-                    gen_bbox_csv_rows(
+                    csv_rows += gen_bbox_csv_rows(
                         classes=keys,
                         transform=ds.transform,
                         window=window,
-                        output_path=mask_paths["bbox-csv"],
+                        input_path=raster,
                         polys_dict=polys_dict,
                         label_property=label_property,
                     )
@@ -288,6 +295,8 @@ def extract_chips_from_raster(
                     img_path,
                     skip_low_contrast=skip_low_contrast,
                 )
+
+        write_bbox_csv(csv_rows, output_dir=output_dir)
 
         if write_footprints:
             geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))

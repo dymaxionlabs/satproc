@@ -101,28 +101,32 @@ def make_masks(
                     label_property=label_property,
                 )
 
-        # Write rows to a CSV file. Eg:
-        # filename,width,height,class,minx,miny,maxx,maxy
-        # polygon_242_s2_RGBNIRNDVI_1_2.tif,416,416,t,50,126,159,216
-        # ...
-        if csv_rows:
-            csv_path = os.path.join(output_dir, "bbox.csv")
-            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-            with open(csv_path, "w") as f:
-                header = [
-                    "path",
-                    "width",
-                    "height",
-                    "class",
-                    "minx",
-                    "miny",
-                    "maxx",
-                    "maxy",
-                ]
-                writer = csv.DictWriter(f, fieldnames=header)
-                writer.writeheader()
-                for row in csv_rows:
-                    writer.writerow(row)
+        write_bbox_csv(csv_rows, output_dir=output_dir)
+
+
+def write_bbox_csv(rows, *, output_dir):
+    # Write rows to a CSV file. Eg:
+    # filename,width,height,class,minx,miny,maxx,maxy
+    # polygon_242_s2_RGBNIRNDVI_1_2.tif,416,416,t,50,126,159,216
+    # ...
+    if rows:
+        csv_path = os.path.join(output_dir, "bbox.csv")
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        with open(csv_path, "w") as f:
+            header = [
+                "path",
+                "width",
+                "height",
+                "class",
+                "minx",
+                "miny",
+                "maxx",
+                "maxy",
+            ]
+            writer = csv.DictWriter(f, fieldnames=header)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
 
 
 def multiband_chip_mask_by_classes(
