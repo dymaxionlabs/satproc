@@ -1,5 +1,6 @@
 import logging
 import os
+import csv
 from collections import defaultdict
 
 import cv2
@@ -10,6 +11,7 @@ from rasterio.features import rasterize
 from shapely.geometry import shape
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
+from shapely.geometry import box
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -47,6 +49,8 @@ def make_masks(
     polys_dict = classify_polygons(labels, label_property, classes)
 
     with logging_redirect_tqdm():
+        csv_rows = []
+
         for raster in tqdm(rasters, ascii=True, desc="Rasters"):
             name, _ = os.path.splitext(os.path.basename(raster))
             with rasterio.open(raster) as src:
@@ -61,30 +65,64 @@ def make_masks(
                     b.right,
                     b.top,
                     src.transform,
-                    src.height,
-                    src.width,
                 )
 
             paths = {
-                kind: os.path.join(output_dir, kind, f"{name}.tif") for kind in masks
+                kind: os.path.join(output_dir, kind, f"{name}.tif")
+                for kind in masks
+                if kind != "bbox-csv"
             }
             keys = classes if classes is not None else polys_dict.keys()
 
-            masks = multiband_chip_mask_by_classes(
-                classes=keys,
-                transform=transform,
-                window=window,
-                polys_dict=polys_dict,
-                label_property=label_property,
-                extent_no_border=extent_no_border,
-                extent_mask_path=paths.get("extent"),
-                boundary_mask_path=paths.get("boundary"),
-                distance_mask_path=paths.get("distance"),
-            )
+            if any(m in paths for m in masks):
+                mask_results = multiband_chip_mask_by_classes(
+                    classes=keys,
+                    transform=transform,
+                    window=window,
+                    polys_dict=polys_dict,
+                    label_property=label_property,
+                    extent_no_border=extent_no_border,
+                    extent_mask_path=paths.get("extent"),
+                    boundary_mask_path=paths.get("boundary"),
+                    distance_mask_path=paths.get("distance"),
+                )
 
-            write_window_masks(
-                masks, window=window, metadata=profile, transform=transform
-            )
+                write_window_masks(
+                    mask_results, window=window, metadata=profile, transform=transform
+                )
+
+            if "bbox-csv" in masks:
+                csv_rows += gen_bbox_csv_rows(
+                    classes=keys,
+                    transform=transform,
+                    window=window,
+                    input_path=raster,
+                    polys_dict=polys_dict,
+                    label_property=label_property,
+                )
+
+        # Write rows to a CSV file. Eg:
+        # filename,width,height,class,minx,miny,maxx,maxy
+        # polygon_242_s2_RGBNIRNDVI_1_2.tif,416,416,t,50,126,159,216
+        # ...
+        if csv_rows:
+            csv_path = os.path.join(output_dir, "bbox.csv")
+            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+            with open(csv_path, "w") as f:
+                header = [
+                    "path",
+                    "width",
+                    "height",
+                    "class",
+                    "minx",
+                    "miny",
+                    "maxx",
+                    "maxy",
+                ]
+                writer = csv.DictWriter(f, fieldnames=header)
+                writer.writeheader()
+                for row in csv_rows:
+                    writer.writerow(row)
 
 
 def multiband_chip_mask_by_classes(
@@ -154,6 +192,52 @@ def write_window_masks(masks, *, window, metadata, transform):
         with rasterio.open(path, "w", **kwargs) as dst:
             for i in range(len(mask)):
                 dst.write(mask[i], i + 1)
+
+
+def _clamp(v, min_v, max_v):
+    return max(min_v, min(max_v, v))
+
+
+def gen_bbox_csv_rows(
+    *,
+    classes,
+    window,
+    transform,
+    input_path,
+    label_property,
+    polys_dict=None,
+    label_path=None,
+):
+    if polys_dict is None and label_path is not None:
+        polys_dict = classify_polygons(label_path, label_property, classes)
+
+    win_bounds = rasterio.windows.bounds(window, transform)
+    win_shape = box(*win_bounds)
+
+    rows = []
+    for k in classes:
+        polys = [box(*p.bounds) for p in polys_dict[k]]
+        win_polys = [p for p in polys if p.intersects(win_shape)]
+        win_polys = [p.intersection(win_shape) for p in win_polys]
+        for p in win_polys:
+            # Convert projected bounds to pixel bounds w.r.t image
+            p_win = rasterio.windows.from_bounds(*p.bounds, transform=transform)
+            rows.append(
+                {
+                    "path": os.path.basename(input_path),
+                    "width": round(window.width),
+                    "height": round(window.height),
+                    "class": k,
+                    "minx": _clamp(round(p_win.col_off), 0, window.width),
+                    "miny": _clamp(round(p_win.row_off), 0, window.height),
+                    "maxx": _clamp(round(p_win.col_off + p_win.width), 0, window.width),
+                    "maxy": _clamp(
+                        round(p_win.row_off + p_win.height), 0, window.height
+                    ),
+                }
+            )
+
+    return rows
 
 
 def mask_from_polygons(
@@ -265,9 +349,7 @@ def classify_polygons(labels, label_property, classes):
             try:
                 geom = shape(block["geometry"])
             except RuntimeError:
-                _logger.warning(
-                    "Failed to get geometry shape for feature: %s", block
-                )
+                _logger.warning("Failed to get geometry shape for feature: %s", block)
                 continue
             polys[c].append(geom)
     if missing_classes:

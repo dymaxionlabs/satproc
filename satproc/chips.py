@@ -17,6 +17,7 @@ from satproc.masks import (
     multiband_chip_mask_by_classes,
     prepare_label_shapes,
     write_window_masks,
+    gen_bbox_csv_rows,
 )
 from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
 
@@ -159,10 +160,12 @@ def extract_chips_from_raster(
         if bands is None:
             bands = list(range(1, min(ds.count, 3) + 1))
 
-        _logger.info((
-            f"Building windows of size {size}, step size {step_size}"
-            f"{' (no overlap)' if step_size >= size else ''}"
-        ))
+        _logger.info(
+            (
+                f"Building windows of size {size}, step size {step_size}"
+                f"{' (no overlap)' if step_size >= size else ''}"
+            )
+        )
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(
@@ -246,6 +249,16 @@ def extract_chips_from_raster(
                     label_property=label_property,
                     extent_no_border=extent_no_border,
                 )
+
+                if "bbox-csv" in masks:
+                    gen_bbox_csv_rows(
+                        classes=keys,
+                        transform=ds.transform,
+                        window=window,
+                        output_path=mask_paths["bbox-csv"],
+                        polys_dict=polys_dict,
+                        label_property=label_property,
+                    )
 
                 # If all masks are empty, skip this window
                 if skip_with_empty_mask and all_masks_empty(mask_imgs):

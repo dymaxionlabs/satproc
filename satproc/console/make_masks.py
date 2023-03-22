@@ -48,7 +48,7 @@ def parse_args(args):
         "--masks",
         "-m",
         nargs="+",
-        choices=["extent", "boundary", "distance"],
+        choices=["extent", "boundary", "distance", "bbox-csv"],
         default={"extent"},
     )
     parser.add_argument(

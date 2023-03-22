@@ -50,7 +50,10 @@ def parse_args(args):
         "--size", type=int, default=256, help="size of image tiles, in pixels"
     )
     parser.add_argument(
-        "--step-size", type=int, default=None, help="step size (i.e. stride), in pixels (if None, same as size i.e. no overlap)"
+        "--step-size",
+        type=int,
+        default=None,
+        help="step size (i.e. stride), in pixels (if None, same as size i.e. no overlap)",
     )
     parser.add_argument(
         "--sliding-windows-mode",
@@ -71,7 +74,7 @@ def parse_args(args):
         "--masks",
         "-m",
         nargs="+",
-        choices=["extent", "boundary", "distance"],
+        choices=["extent", "boundary", "distance", "bbox-csv"],
         default={"extent"},
     )
     parser.add_argument(
