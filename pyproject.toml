@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pysatproc"
-version = "0.2.1"
+version = "0.2.2"
 description = "Python library and CLI tools for processing geospatial imagery for ML"
 authors = ["Damián Silvani <munshkr@gmail.com>"]
 license = "Apache-2.0"
