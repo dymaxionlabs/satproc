@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import multiprocessing as mp
@@ -182,6 +183,42 @@ def write_chips_geojson(output_path, chip_pairs, *, chip_type, crs, basename):
             }
             d["features"].append(feature)
         f.write(json.dumps(d))
+
+
+def write_chips_csv(output_path, chip_pairs, *, chip_type, basename):
+    """Write a CSV containing chips polygons as features
+
+    Parameters
+    ----------
+    output_path : str
+        CSV output path
+    chip_pairs : Tuple[Shape, Tuple[int, int, int]]
+        a pair with the chip polygon geometry, and a tuple of (feature id, x, y)
+    chip_type : str
+        chip file type extension (e.g. tif, jpg)
+    basename : str
+        basename of chip files
+
+    Returns
+    -------
+    None
+
+    """
+    if not chip_pairs:
+        _logger.warn("No chips to save")
+        return
+
+    _logger.info("Write chips CSV")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    header = ["id", "x", "y", "minx", "miny", "maxx", "maxy", "filename"]
+    with open(output_path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        for i, (chip, (_fi, xi, yi)) in enumerate(chip_pairs):
+            minx, miny, maxx, maxy = chip.bounds
+            filename = f"{basename}_{xi}_{yi}.{chip_type}"
+            writer.writerow([i, xi, yi, minx, miny, maxx, maxy, filename])
 
 
 def get_raster_band_count(path):
