@@ -50,7 +50,10 @@ def parse_args(args):
         "--size", type=int, default=256, help="size of image tiles, in pixels"
     )
     parser.add_argument(
-        "--step-size", type=int, default=None, help="step size (i.e. stride), in pixels (if None, same as size i.e. no overlap)"
+        "--step-size",
+        type=int,
+        default=None,
+        help="step size (i.e. stride), in pixels (if None, same as size i.e. no overlap)",
     )
     parser.add_argument(
         "--sliding-windows-mode",
@@ -164,6 +167,12 @@ def parse_args(args):
         help="do not write a GeoJSON file of chip footprints",
         dest="write_footprints",
         action="store_false",
+    )
+    parser.add_argument(
+        "--footprints-type",
+        help="footprints file format",
+        choices=["geojson", "csv"],
+        default="geojson",
     )
 
     parser.add_argument("--crs", help="force CRS of input files")
@@ -303,6 +312,7 @@ def main(args):
         chip_type=args.type,
         within=args.within,
         write_footprints=args.write_footprints,
+        footprints_type=args.footprints_type,
         classes=args.classes,
         crs=args.crs,
         skip_existing=args.skip_existing,

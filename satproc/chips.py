@@ -18,7 +18,12 @@ from satproc.masks import (
     prepare_label_shapes,
     write_window_masks,
 )
-from satproc.utils import rescale_intensity, sliding_windows, write_chips_geojson
+from satproc.utils import (
+    rescale_intensity,
+    sliding_windows,
+    write_chips_geojson,
+    write_chips_csv,
+)
 
 __author__ = "Damián Silvani"
 __copyright__ = "Dymaxion Labs"
@@ -40,6 +45,7 @@ def extract_chips(
     bands=None,
     chip_type="tif",
     write_footprints=False,
+    footprints_type="geojson",
     classes=None,
     crs=None,
     skip_existing=True,
@@ -85,6 +91,7 @@ def extract_chips(
                 chip_type=chip_type,
                 within=within,
                 write_footprints=write_footprints,
+                footprints_type=footprints_type,
                 crs=crs,
                 labels=labels,
                 label_property=label_property,
@@ -108,6 +115,7 @@ def extract_chips_from_raster(
     bands=None,
     chip_type="tif",
     write_footprints=False,
+    footprints_type="geojson",
     labels=None,
     label_property="class",
     mask_type="class",
@@ -159,10 +167,12 @@ def extract_chips_from_raster(
         if bands is None:
             bands = list(range(1, min(ds.count, 3) + 1))
 
-        _logger.info((
-            f"Building windows of size {size}, step size {step_size}"
-            f"{' (no overlap)' if step_size >= size else ''}"
-        ))
+        _logger.info(
+            (
+                f"Building windows of size {size}, step size {step_size}"
+                f"{' (no overlap)' if step_size >= size else ''}"
+            )
+        )
         win_size = (size, size)
         win_step_size = (step_size, step_size)
         windows = list(
@@ -277,15 +287,30 @@ def extract_chips_from_raster(
                 )
 
         if write_footprints:
-            geojson_path = os.path.join(output_dir, "{}.geojson".format(basename))
-            _logger.info("Write chips footprints GeoJSON at %s", geojson_path)
-            write_chips_geojson(
-                geojson_path,
-                chips,
-                chip_type=chip_type,
-                crs=str(meta["crs"]),
-                basename=basename,
-            )
+            if footprints_type == "geojson":
+                if not meta["crs"]:
+                    _logger.error("No CRS found, cannot write GeoJSON footprints")
+                else:
+                    geojson_path = os.path.join(
+                        output_dir, "{}.geojson".format(basename)
+                    )
+                    _logger.info("Write chips footprints GeoJSON at %s", geojson_path)
+                    write_chips_geojson(
+                        geojson_path,
+                        chips,
+                        chip_type=chip_type,
+                        crs=str(meta["crs"]),
+                        basename=basename,
+                    )
+            elif footprints_type == "csv":
+                csv_path = os.path.join(output_dir, "{}.csv".format(basename))
+                _logger.info("Write chips footprints CSV at %s", csv_path)
+                write_chips_csv(
+                    csv_path,
+                    chips,
+                    chip_type=chip_type,
+                    basename=basename,
+                )
 
 
 def write_image(img, path, *, percentiles=None, skip_low_contrast=False):
