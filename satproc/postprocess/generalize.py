@@ -3,6 +3,7 @@ import os
 
 import fiona
 import numpy as np
+from fiona import Geometry
 from pyproj.crs import CRS
 from shapely.geometry import Polygon, mapping, shape
 from tqdm import tqdm
@@ -94,7 +95,7 @@ def generalize(
                             )
                         if smooth == "chaikin":
                             shp = smooth_chaikin(shp, refinements=chaikins_refinements)
-                        feat["geometry"] = mapping(shp)
+                        feat["geometry"] = Geometry.from_dict(mapping(shp))
                         dst.write(feat)
 
 
